@@ -1,30 +1,22 @@
-require('dotenv').config();
 const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 4599;
-const cors = require('cors');
+const { configureApp, appSettings } = require('./config/app.config.js');
 const FrontendRoutes = require('./Routes/Frontend.routes.js');
 const connectDB = require('./config/database.config.js');
 require('./utils/cronjobs.js');
 
+// Initialize Express App
+const app = express();
+
+// Configure App (Apply all middleware)
+configureApp(app);
+
 // Connect to Database
 connectDB();
 
-app.use(cors({
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-}))
-
-app.get('/', (req, res) => {
-    res.send('Hello, World');
-})
-
-app.use(express.static('public'));
-
-
+// Routes
 app.use("/api", FrontendRoutes)
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// Start Server
+app.listen(appSettings.port, () => {
+    console.log(`Server is running on port ${appSettings.port} in ${appSettings.env} mode`);
 })
