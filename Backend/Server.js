@@ -4,7 +4,11 @@ const app = express();
 const PORT = process.env.PORT || 4599;
 const cors = require('cors');
 const FrontendRoutes = require('./Routes/Frontend.routes.js');
-require('./utils/cronjobs.js'); 
+const connectDB = require('./config/database.config.js');
+require('./utils/cronjobs.js');
+
+// Connect to Database
+connectDB();
 
 app.use(cors({
     origin: 'http://localhost:5173',
