@@ -15,7 +15,6 @@ const morgan = require('morgan');
 const securityMiddleware = require('../middleware/security.middleware');
 const requestMiddleware = require('../middleware/request.middleware');
 const { globalLimiter, authLimiter } = require('../middleware/rateLimit.middleware');
-const { globalErrorHandler } = require('../middleware/error.middleware');
 
 // ============================================================================
 // CONFIGURE APP
@@ -97,18 +96,13 @@ const configureApp = (app) => {
   // 6. STATIC FILES (if needed)
   // ========================================================================
   if (process.env.SERVE_STATIC !== 'false') {
-    app.use(express.static('public', {
+    const staticDir = process.env.STATIC_DIR || 'Public';
+    app.use(express.static(staticDir, {
       maxAge: '1d',
       etag: true,
     }));
     console.log('✅ Static file serving enabled');
   }
-
-  // ========================================================================
-  // 7. GLOBAL ERROR HANDLER (Must be last!)
-  // ========================================================================
-  app.use(globalErrorHandler);
-  console.log('✅ Global error handler configured');
 
   console.log('✅ Express app configuration complete');
   console.log(`📝 Environment: ${process.env.NODE_ENV}`);

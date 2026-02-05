@@ -310,9 +310,9 @@ const isFormatAllowed = (type, format) => {
     return allowedFormats.includes(format.toLowerCase());
 };
 
-// ============================================================================
+
 // EXPORTS
-// ============================================================================
+
 
 module.exports = {
     // Configuration object

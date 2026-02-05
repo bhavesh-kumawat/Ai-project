@@ -1,4 +1,3 @@
-const upload = require('../middleware/upload.middleware');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary.utils');
 const asyncHandler = require('../utils/asyncHandler.utils');
 
