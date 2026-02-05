@@ -14,7 +14,7 @@ configureApp(app);
 // Setup Routes (after middleware, before server start)
 // app.use("/api", FrontendRoutes);
 
-
+app.set("trust proxy", 1);
 // Start Server Wrapper
 const startServer = async () => {
     try {
