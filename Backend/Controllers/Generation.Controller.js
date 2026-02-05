@@ -1,6 +1,6 @@
 const upload = require('../middleware/upload.middleware');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary.utils');
-const asyncHandler = require('../utils/asyncHandler');
+const asyncHandler = require('../utils/asyncHandler.utils');
 
 // Upload endpoint
 const uploadImage = asyncHandler(async (req, res) => {
