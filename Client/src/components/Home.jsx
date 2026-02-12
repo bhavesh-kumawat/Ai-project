@@ -350,13 +350,7 @@ const galleryItems = [
             >
               ▶ Start Creating Free
             </motion.button>
-            <motion.button
-              className="border border-white/20 hover:border-white/40 text-white font-semibold px-8 py-4 rounded-full text-base backdrop-blur-sm hover:bg-white/5 transition-all"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Watch Demo →
-            </motion.button>
+          
           </motion.div>
 
           {/* Stats */}
