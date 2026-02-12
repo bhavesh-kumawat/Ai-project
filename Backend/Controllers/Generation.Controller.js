@@ -1,5 +1,160 @@
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary.utils');
 const asyncHandler = require('../utils/asyncHandler.utils');
+const Generation = require('../Models/Generation.models');
+const Project = require('../Models/Project.model');
+const { AppError } = require('../middleware/error.middleware');
+const { validatePrompt, calculateCredits, getRecommendedService } = require('../utils/Ai.utils');
+const { deductUserCredit } = require('../services/credit.service');
+
+const resolveCreditsForType = (type, metadata = {}) => {
+  if (type === 'text-to-video' || type === 'image-to-video') {
+    return calculateCredits('textToVideo', { duration: metadata.duration || 'short' });
+  }
+  if (type === 'text-to-image' || type === 'image-to-image') {
+    return calculateCredits('textToImage', { provider: metadata.provider || 'replicate' });
+  }
+  return 1;
+};
+
+const createGeneration = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+  const {
+    type,
+    prompt,
+    inputImage = null,
+    modelUsed,
+    duration,
+    projectId,
+    title,
+    description,
+    settings = {},
+    metadata = {},
+  } = req.body;
+
+  const promptValidation = validatePrompt(prompt);
+  if (!promptValidation.valid) {
+    return next(new AppError(promptValidation.errors.join(', '), 400));
+  }
+
+  if (projectId) {
+    const project = await Project.findOne({ _id: projectId, userId });
+    if (!project) {
+      return next(new AppError('Project not found', 404));
+    }
+  }
+
+  const creditCost = resolveCreditsForType(type, { duration, provider: metadata.provider });
+  await deductUserCredit(userId, creditCost);
+
+  const generation = await Generation.create({
+    user: userId,
+    type,
+    prompt,
+    inputImage,
+    modelUsed: modelUsed || getRecommendedService(type === 'text-to-video' ? 'textToVideo' : 'textToImage'),
+    creditUsed: creditCost,
+    metadata: {
+      ...metadata,
+      duration,
+      settings,
+      projectId,
+    },
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Generation request created',
+    data: generation,
+  });
+});
+
+const listGenerations = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { status, type, page = 1, limit = 20 } = req.query;
+
+  const filter = { user: userId };
+  if (status) filter.status = status;
+  if (type) filter.type = type;
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    Generation.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+    Generation.countDocuments(filter),
+  ]);
+
+  res.json({
+    success: true,
+    data: items,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+});
+
+const getGenerationById = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+  const generation = await Generation.findOne({ _id: req.params.id, user: userId });
+
+  if (!generation) {
+    return next(new AppError('Generation not found', 404));
+  }
+
+  res.json({
+    success: true,
+    data: generation,
+  });
+});
+
+const cancelGeneration = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+  const generation = await Generation.findOne({ _id: req.params.id, user: userId });
+
+  if (!generation) {
+    return next(new AppError('Generation not found', 404));
+  }
+
+  if (generation.status === 'completed') {
+    return next(new AppError('Completed generations cannot be canceled', 400));
+  }
+
+  generation.status = 'failed';
+  generation.error = 'Canceled by user';
+  await generation.save();
+
+  res.json({
+    success: true,
+    message: 'Generation canceled',
+    data: generation,
+  });
+});
+
+const retryGeneration = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+  const generation = await Generation.findOne({ _id: req.params.id, user: userId });
+
+  if (!generation) {
+    return next(new AppError('Generation not found', 404));
+  }
+
+  if (generation.status === 'processing') {
+    return next(new AppError('Generation is already processing', 400));
+  }
+
+  generation.status = 'pending';
+  generation.error = null;
+  generation.output = null;
+  await generation.save();
+
+  res.json({
+    success: true,
+    message: 'Generation queued for retry',
+    data: generation,
+  });
+});
 
 // Upload endpoint
 const uploadImage = asyncHandler(async (req, res) => {
@@ -33,4 +188,12 @@ const deleteImage = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { uploadImage, deleteImage };
+module.exports = {
+  createGeneration,
+  listGenerations,
+  getGenerationById,
+  cancelGeneration,
+  retryGeneration,
+  uploadImage,
+  deleteImage,
+};

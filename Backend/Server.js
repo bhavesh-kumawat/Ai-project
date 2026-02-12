@@ -5,8 +5,12 @@ const FrontendRoutes = require('./Routes/Frontend.routes.js');
 const authRoutes = require('./Routes/auth.routes.js');
 const creditRoutes = require('./Routes/credit.routes.js');
 const paymentRoutes = require('./Routes/payment.routes.js');
+const generationRoutes = require('./Routes/generation.routes.js');
+const videoRoutes = require('./Routes/video.routes.js');
+const projectRoutes = require('./Routes/project.routes.js');
 const databaseService = require('./services/database.service.js');
 const scheduler = require('./jobs/scheduler.js');
+const generationJob = require('./jobs/processGeneration.job.js');
 const logger = require('./utils/logger.utils.js');
 const { globalErrorHandler } = require('./middleware/error.middleware.js');
 
@@ -21,6 +25,9 @@ app.use("/api", FrontendRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/credit", creditRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/generations", generationRoutes);
+app.use("/api/videos", videoRoutes);
+app.use("/api/projects", projectRoutes);
 
 // Global error handler must be last
 app.use(globalErrorHandler);
@@ -48,6 +55,9 @@ const startServer = async () => {
             console.log(`Server is running on port ${appSettings.port} in ${appSettings.env} mode`);
             logger.info(`🚀 Server running on port ${appSettings.port}`);
         });
+
+        // 3. Start background workers
+        generationJob.startGenerationWorker();
 
         // Handle unhandled promise rejections
         process.on('unhandledRejection', (err) => {
