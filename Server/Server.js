@@ -8,6 +8,7 @@ const paymentRoutes = require('./Routes/payment.routes.js');
 const generationRoutes = require('./Routes/generation.routes.js');
 const videoRoutes = require('./Routes/video.routes.js');
 const projectRoutes = require('./Routes/project.routes.js');
+const adminRoutes = require('./Routes/admin.routes.js');
 const databaseService = require('./services/database.service.js');
 const scheduler = require('./jobs/scheduler.js');
 const generationJob = require('./jobs/processGeneration.job.js');
@@ -28,6 +29,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/generations", generationRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Global error handler must be last
 app.use(globalErrorHandler);

@@ -12,6 +12,7 @@ const Generation = require('../Models/Generation.models');
 const Video = require('../Models/Video.models');
 const Project = require('../Models/Project.model');
 const logger = require('../utils/logger.utils');
+const mongoose = require('mongoose');
 
 const config = {
   interval: process.env.GENERATION_POLL_INTERVAL || '*/1 * * * *', // every minute
@@ -97,6 +98,10 @@ const processGeneration = async (generation) => {
 };
 
 const pollPendingGenerations = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    logger.warn('Skipping generation polling: database not connected');
+    return;
+  }
   const pending = await Generation.find({ status: 'pending' })
     .sort({ createdAt: 1 })
     .limit(config.batchSize);
