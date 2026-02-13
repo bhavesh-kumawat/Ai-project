@@ -4,14 +4,21 @@ const User = require('../Models/User.models');
 const { AppError } = require('../middleware/error.middleware');
 
 exports.login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
+  try {
+    // i use identifier if user login username or email than i use mongodb $or operator 
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
       return next(new AppError('Please provide email and password', 400));
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ 
+      $or: [
+      { email: identifier.toLowerCase() },
+      { username: identifier.toLowerCase()},
+    ],
+   }).select('+password');
 
     if (!user || !(await user.comparePassword(password))) {
       return next(new AppError('Invalid email or password', 401));
