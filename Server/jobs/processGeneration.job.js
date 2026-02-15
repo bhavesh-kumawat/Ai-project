@@ -92,6 +92,9 @@ const processGeneration = async (generation) => {
     }
 
     if (generation.type.includes('video')) {
+      if (aiConfig.featureFlags.features.videoGeneration === false) {
+        throw new Error('Video generation is currently disabled via feature flags');
+      }
       const videoPayload = buildMockVideo(generation);
       const provider = generation.metadata?.provider || null;
       const size = generation.metadata?.size || 'medium';
@@ -157,9 +160,22 @@ const processGeneration = async (generation) => {
     logger.info(`✅ Generation completed: ${generation._id}`);
   } catch (error) {
     generation.status = 'failed';
-    generation.error = formatGenerationError(error);
+    generation.error = typeof error === 'string' ? error : (error.response?.data?.message || error.message || 'Unknown internal error');
     await generation.save();
-    logger.error(`❌ Generation failed: ${generation._id}`, error);
+
+    // Refund credits on failure
+    try {
+      if (generation.creditUsed > 0) {
+        const { refundUserCredit } = require('../services/credit.service');
+        await refundUserCredit(generation.user, generation.creditUsed);
+
+        logger.info(`💰 REFUNDED ${generation.creditUsed} credits and corrected usage for user ${generation.user} for failed generation: ${generation._id}`);
+      }
+    } catch (refundError) {
+      logger.error(`❌ CRITICAL: Refund/Usage correction failed for generation: ${generation._id}`, refundError);
+    }
+
+    logger.error(`❌ Generation Job Failed: ${generation._id} | Error: ${generation.error}`, { stack: error.stack });
   }
 };
 

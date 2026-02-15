@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getAdminStats, getAdminUsers, getAdminGenerations, banAdminUser, unbanAdminUser, deleteAdminUser, deleteAdminGeneration } from "../Service/admin.service";
+import BackButton from "../components/BackButton";
 const _MOTION = motion;
 
 // ─── CANVAS (red tinted meteors for admin) ────────────────────────────────────
@@ -107,7 +108,7 @@ function StatCard({ icon, label, value, change, color, delay }) {
       style={{ padding: "20px 22px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, position: "relative", overflow: "hidden" }}
       whileHover={{ y: -3, boxShadow: `0 8px 28px ${color}20` }} >
       <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, background: `radial-gradient(circle at 80% 20%,${color}18,transparent 70%)`, pointerEvents: "none" }} />
-      
+
       <div style={{ fontSize: 22, marginBottom: 10 }}>{icon}</div>
 
       <p style={{ color: "rgba(255,255,255,0.32)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 3 }}>{label}</p>
@@ -152,10 +153,12 @@ function Navbar({ user, activeTab, setActiveTab, onLogout, live }) {
         <div style={{ display: "flex", gap: 2 }}>
           {NAV_TABS.map(t => (
             <button key={t} onClick={() => setActiveTab(t)}
-              style={{ padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .18s",
+              style={{
+                padding: "6px 14px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .18s",
                 background: activeTab === t ? "rgba(220,38,38,0.2)" : "transparent",
                 color: activeTab === t ? "#fca5a5" : "rgba(255,255,255,0.38)",
-                borderBottom: activeTab === t ? "2px solid #dc2626" : "2px solid transparent" }}>{t}</button>
+                borderBottom: activeTab === t ? "2px solid #dc2626" : "2px solid transparent"
+              }}>{t}</button>
           ))}
         </div>
 
@@ -311,6 +314,7 @@ export default function AdminDashboard() {
       `}</style>
 
       <Blobs /><SpaceCanvas />
+      <BackButton />
       <Navbar user={user} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={logout} live={isLive} />
 
       <div style={{ position: "relative", zIndex: 1, paddingTop: 58 }}>

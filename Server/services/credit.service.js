@@ -202,6 +202,39 @@ async function addUserCredits(userId, amount, isBonus = false) {
 }
 
 /**
+ * Refunds credits for a failed generation, correcting usage stats.
+ * @param {string} userId 
+ * @param {number} amount 
+ * @returns {Promise<Document>}
+ */
+async function refundUserCredit(userId, amount) {
+  const credit = await getClientCredit(userId);
+
+  // Refund to balance (simplification, original source isn't tracked here)
+  credit.balance += amount;
+
+  // Decriment usage if > 0
+  if (credit.totalCreditsUsed >= amount) {
+    credit.totalCreditsUsed -= amount;
+  }
+
+  if (credit.totalGenerations > 0) {
+    credit.totalGenerations -= 1;
+  }
+
+  if (credit.dailyUsed > 0) {
+    credit.dailyUsed -= 1;
+  }
+
+  if (credit.monthlyUsed > 0) {
+    credit.monthlyUsed -= 1;
+  }
+
+  await credit.save();
+  return credit;
+}
+
+/**
  * Updates user plan and resets usage.
  * @param {string} userId 
  * @param {Object} planDetails 
@@ -280,6 +313,7 @@ module.exports = {
   getClientCredit,
   deductUserCredit,
   addUserCredits,
+  refundUserCredit,
   updateUserPlan,
   cancelUserSubscription,
   getUserStatistics

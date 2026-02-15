@@ -67,6 +67,7 @@ const fetchBinaryUrl = async (url) => {
 const generateImageWithOpenAI = async ({ prompt, size }) => {
   requireApiKey('OpenAI', aiConfig.openai.apiKey);
   const dims = normalizeSize(size);
+  console.log(`[OpenAI] Generating image with model: ${aiConfig.openai.dalle.model}, size: ${dims.openai}`);
 
   const response = await axios.post(
     `${aiConfig.openai.baseURL}${aiConfig.openai.endpoints.imageGeneration}`,
@@ -105,6 +106,7 @@ const generateImageWithOpenAI = async ({ prompt, size }) => {
 const generateImageWithStability = async ({ prompt, size }) => {
   requireApiKey('Stability', aiConfig.stability.apiKey);
   const dims = normalizeSize(size);
+  console.log(`[Stability] Generating image with aspect ratio: ${dims.stabilityAspect}`);
   const form = new FormData();
   form.append('prompt', prompt);
   form.append('output_format', aiConfig.stability.image.outputFormat || 'png');
@@ -131,6 +133,7 @@ const generateImageWithStability = async ({ prompt, size }) => {
 const generateImageWithGemini = async ({ prompt }) => {
   requireApiKey('Gemini', aiConfig.gemini.apiKey);
   const model = aiConfig.gemini.imageModel;
+  console.log(`[Gemini] Generating image with model: ${model}`);
 
   const response = await axios.post(
     `${aiConfig.gemini.baseURL}/models/${model}:generateContent?key=${aiConfig.gemini.apiKey}`,
@@ -167,6 +170,7 @@ const generateImageBuffer = async ({ prompt, size = 'medium', provider }) => {
 
   for (const candidate of providers) {
     try {
+      console.log(`[AI-Service] Attempting image generation with provider: ${candidate}`);
       if (candidate === 'openai') {
         return await retryWithBackoff(() => generateImageWithOpenAI({ prompt, size }));
       }
@@ -177,11 +181,19 @@ const generateImageBuffer = async ({ prompt, size = 'medium', provider }) => {
         return await retryWithBackoff(() => generateImageWithGemini({ prompt, size }));
       }
     } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      console.error(`[AI-Service] Provider ${candidate} failed: ${error.message} (${error.response?.status})${isRateLimit ? ' - Switching to fallback...' : ''}`);
+
+      // If it's a rate limit, the loop will try the next provider.
+      // We store the error in case all fail.
       lastError = error;
+
+      // If the error is NOT retryable or quota/auth related, we definitely want the next provider.
+      // Already handled by the catch block moving to next iteration.
     }
   }
 
-  throw new Error(lastError?.message || 'No available image provider could generate output');
+  throw new Error(`AI Generation failed for all providers. Last error from [${providers[providers.length - 1]}]: ${lastError?.message || 'Unknown error'}`);
 };
 
 const submitStabilityVideoJob = async (seedImageBuffer) => {
@@ -251,6 +263,7 @@ const generateVideoWithStability = async ({ prompt, size, seedProvider }) => {
     size,
     provider: seedProvider || 'stability',
   });
+  console.log(`[Stability] Submitting video job with image seed`);
   try {
     const generationId = await submitStabilityVideoJob(imageSeed);
     const videoBuffer = await pollStabilityVideo(generationId);
@@ -276,6 +289,7 @@ const generateVideoBuffer = async ({ prompt, size = 'medium', provider }) => {
 
   for (const candidate of providers) {
     try {
+      console.log(`[AI-Service] Attempting video generation with provider: ${candidate}`);
       if (candidate === 'stability') {
         return await retryWithBackoff(() =>
           generateVideoWithStability({ prompt, size, seedProvider: 'stability' })
@@ -288,11 +302,13 @@ const generateVideoBuffer = async ({ prompt, size = 'medium', provider }) => {
         );
       }
     } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      console.error(`[AI-Service] Provider ${candidate} failed: ${error.message} (${error.response?.status})${isRateLimit ? ' - Switching to fallback...' : ''}`);
       lastError = error;
     }
   }
 
-  throw new Error(lastError?.message || 'No available video provider could generate output');
+  throw new Error(`AI Video Generation failed for all providers. Last error from [${providers[providers.length - 1]}]: ${lastError?.message || 'Unknown error'}`);
 };
 
 module.exports = {

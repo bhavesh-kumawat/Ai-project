@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import LoginUI from "../components/loginuifile/LoginUI.component";
 import { loginUser } from "../Service/auth.service";
+import BackButton from "../components/BackButton";
 
 function Login() {
   const [identifier, setIdentifier] = useState("");
@@ -58,15 +59,18 @@ function Login() {
   }, [success, navigate]);
 
   return (
-    <LoginUI
-      identifier={identifier}
-      password={password}
-      setIdentifier={setIdentifier}
-      setPassword={setPassword}
-      handleSubmit={handleLogin}
-      loading={loading}
-      success={success}
-    />
+    <>
+      <BackButton />
+      <LoginUI
+        identifier={identifier}
+        password={password}
+        setIdentifier={setIdentifier}
+        setPassword={setPassword}
+        handleSubmit={handleLogin}
+        loading={loading}
+        success={success}
+      />
+    </>
   );
 }
 

@@ -102,3 +102,59 @@ exports.forgotPassword = async (req, res, next) => {
   // Placeholder for forgot password logic
   next(new AppError('Forgot Password Not Implemented Yet', 501));
 };
+
+exports.getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          createdAt: user.createdAt
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateMe = async (req, res, next) => {
+  try {
+    const { username, email } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    if (username) user.username = username.toLowerCase().trim();
+    if (email) user.email = email.toLowerCase().trim();
+
+    await user.save();
+
+    res.json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: {
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

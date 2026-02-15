@@ -97,11 +97,10 @@ function Home() {
   const PricingCard = ({ plan, price, desc, features, popular, delay }) => (
     <FadeUp delay={delay}>
       <motion.div
-        className={`relative rounded-2xl p-8 border h-full flex flex-col ${
-          popular
+        className={`relative rounded-2xl p-8 border h-full flex flex-col ${popular
             ? "border-violet-500/60 bg-gradient-to-b from-violet-950/60 to-black/60"
             : "border-white/10 bg-white/5"
-        } backdrop-blur-sm`}
+          } backdrop-blur-sm`}
         whileHover={{ y: -6 }}
         transition={{ duration: 0.3 }}
       >
@@ -123,11 +122,10 @@ function Home() {
           )}
         </div>
         <motion.button
-          className={`w-full py-3 rounded-xl font-bold text-sm mb-6 transition-all ${
-            popular
+          className={`w-full py-3 rounded-xl font-bold text-sm mb-6 transition-all ${popular
               ? "bg-violet-600 hover:bg-violet-500 text-white"
               : "border border-white/20 text-white hover:border-white/40 hover:bg-white/5"
-          }`}
+            }`}
           whileTap={{ scale: 0.97 }}
         >
           Get Started
@@ -285,7 +283,7 @@ function Home() {
       console.error("Generation failed:", err);
       setError(
         err.response?.data?.message ||
-          "Generation failed. Please sign in first.",
+        "Generation failed. Please sign in first.",
       );
       // Fallback for demo purposes if backend isn't ready or user not logged in
       // setTimeout(() => { setGenerating(false); setGenerated(true); }, 2000);
@@ -298,11 +296,10 @@ function Home() {
     <div className="min-h-screen bg-black text-white font-sans overflow-x-hidden">
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <motion.nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
             ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
             : "bg-transparent"
-        }`}
+          }`}
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6 }}
@@ -636,11 +633,10 @@ function Home() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-4 text-sm font-semibold capitalize transition-all relative ${
-                      activeTab === tab
+                    className={`flex-1 py-4 text-sm font-semibold capitalize transition-all relative ${activeTab === tab
                         ? "text-white"
                         : "text-white/30 hover:text-white/60"
-                    }`}
+                      }`}
                   >
                     {tab === "video" && "🎬 "}
                     {tab === "image" && "🖼 "}
@@ -856,86 +852,7 @@ function Home() {
         </div>
       </section>
 
-      {/* ── Showcase Gallery ────────────────────────────────────────────────── */}
-      <section id="showcase" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <FadeUp>
-            <div className="text-center mb-16">
-              <p className="text-pink-400 text-sm font-bold uppercase tracking-widest mb-3">
-                Gallery
-              </p>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-                Example Creations
-              </h2>
-              <p className="text-white/40 mt-4 text-lg">
-                See what others have created with AnimateX
-              </p>
-            </div>
-          </FadeUp>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {galleryItems.map(({ bg, label, tag }, i) => (
-              <FadeUp key={i} delay={i * 0.1}>
-                <motion.div
-                  className={`relative rounded-2xl bg-gradient-to-br ${bg} overflow-hidden cursor-pointer group`}
-                  style={{ aspectRatio: i % 3 === 1 ? "16/10" : "4/3" }}
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Animated shimmer */}
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)",
-                    }}
-                  />
-
-                  {/* Particle effect inside card */}
-                  <div className="absolute inset-0">
-                    {[...Array(8)].map((_, pi) => (
-                      <motion.div
-                        key={pi}
-                        className="absolute w-1 h-1 rounded-full bg-white/40"
-                        style={{ left: `${10 + pi * 12}%`, top: "80%" }}
-                        animate={{
-                          y: [0, -(80 + pi * 15)],
-                          opacity: [0, 0.6, 0],
-                        }}
-                        transition={{
-                          duration: 3 + pi * 0.3,
-                          delay: pi * 0.4,
-                          repeat: Infinity,
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Play button */}
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    initial={false}
-                  >
-                    <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-xl">
-                      ▶
-                    </div>
-                  </motion.div>
-
-                  {/* Info */}
-                  <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-                    <span className="text-white font-bold text-sm">
-                      {label}
-                    </span>
-                    <span className="bg-black/50 backdrop-blur-sm text-white/70 text-xs px-2 py-1 rounded-full border border-white/10">
-                      {tag}
-                    </span>
-                  </div>
-                </motion.div>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── Pricing ─────────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-24 px-6 relative">

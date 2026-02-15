@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import RegisterUI from "../components/registeruifile/RegisterUI.component";
 import api from "../utils/api";
+import BackButton from "../components/BackButton";
 
 const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET;
 const ADMIN_ROUTE = import.meta.env.VITE_ADMIN_ROUTE || "/register/admin";
@@ -107,25 +108,28 @@ function Register() {
   };
 
   return (
-    <RegisterUI
-      form={form}
-      setField={setField}
-      errors={errors}
-      loading={loading}
-      success={success}
-      pwStrength={pwStrength}
-      isAdminRoute={isAdminRoute}
-      secretUnlocked={secretUnlocked}
-      secretKey={secretKey}
-      setSecretKey={(val) => {
-        setSecretKey(val);
-        setSecretError("");
-      }}
-      secretError={secretError}
-      verifySecret={verifySecret}
-      isAdmin={isAdmin}
-      handleSubmit={handleSubmit}
-    />
+    <>
+      <BackButton />
+      <RegisterUI
+        form={form}
+        setField={setField}
+        errors={errors}
+        loading={loading}
+        success={success}
+        pwStrength={pwStrength}
+        isAdminRoute={isAdminRoute}
+        secretUnlocked={secretUnlocked}
+        secretKey={secretKey}
+        setSecretKey={(val) => {
+          setSecretKey(val);
+          setSecretError("");
+        }}
+        secretError={secretError}
+        verifySecret={verifySecret}
+        isAdmin={isAdmin}
+        handleSubmit={handleSubmit}
+      />
+    </>
   );
 }
 

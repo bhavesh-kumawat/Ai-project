@@ -24,7 +24,7 @@ const globalConfig = {
     defaultImageProvider: process.env.AI_IMAGE_PROVIDER || 'openai',
     defaultVideoProvider: process.env.AI_VIDEO_PROVIDER || 'stability',
     timeout: Number(process.env.AI_TIMEOUT) || 60000,
-    
+
     retry: {
         maxAttempts: Number(process.env.MAX_RETRIES) || 3,
         strategy: process.env.RETRY_STRATEGY || 'exponential',
@@ -32,12 +32,12 @@ const globalConfig = {
         maxDelay: 30000,
         retryableStatusCodes: [408, 429, 500, 502, 503, 504],
     },
-    
+
     rateLimit: {
         requestsPerMinute: Number(process.env.RATE_LIMIT_REQUESTS_PER_MINUTE) || 60,
         requestsPerHour: Number(process.env.RATE_LIMIT_REQUESTS_PER_HOUR) || 3000,
     },
-    
+
     logging: {
         enabled: process.env.ENABLE_AI_LOGGING !== 'false',
         level: process.env.LOG_LEVEL || 'info',
@@ -46,7 +46,7 @@ const globalConfig = {
         logTokenUsage: true,
         logLatency: true,
     },
-    
+
     safety: {
         enableModeration: process.env.ENABLE_AI_MODERATION !== 'false',
         blockUnsafeContent: process.env.BLOCK_UNSAFE_CONTENT !== 'false',
@@ -63,39 +63,39 @@ const openai = {
     apiKey: process.env.OPENAI_API_KEY,
     organization: process.env.OPENAI_ORG_ID,
     baseURL: 'https://api.openai.com/v1',
-    
+
     endpoints: {
         chat: '/chat/completions',
         imageGeneration: '/images/generations',
         moderation: '/moderations',
     },
-    
+
     gpt: {
         model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
         temperature: Number(process.env.OPENAI_TEMPERATURE) || 0.7,
         maxTokens: Number(process.env.OPENAI_MAX_TOKENS) || 1024,
         topP: Number(process.env.OPENAI_TOP_P) || 1,
     },
-    
+
     dalle: {
         enabled: process.env.DALLE_ENABLED !== 'false',
-        model: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+        model: process.env.OPENAI_IMAGE_MODEL || 'dall-e-3',
         size: '1024x1024',
         quality: 'standard',
         style: 'vivid',
     },
-    
+
     pricing: {
         gpt35Turbo: { input: 0.0015, output: 0.002 },
         gpt4: { input: 0.03, output: 0.06 },
         dalle3: { standard: 0.040, hd: 0.080 },
     },
-    
+
     rateLimit: {
         requestsPerMinute: 500,
         tokensPerMinute: 150000,
     },
-    
+
     timeout: 120000,
 };
 
@@ -147,12 +147,12 @@ const replicate = {
     enabled: process.env.REPLICATE_ENABLED !== 'false',
     apiKey: process.env.REPLICATE_API_KEY,
     baseURL: 'https://api.replicate.com/v1',
-    
+
     endpoints: {
         predictions: '/predictions',
         models: '/models',
     },
-    
+
     models: {
         sdxl: {
             name: 'stability-ai/sdxl',
@@ -179,12 +179,12 @@ const replicate = {
             pricing: 0.001,
         },
     },
-    
+
     polling: {
         interval: 3000,
         maxAttempts: 100,
     },
-    
+
     timeout: 300000,
 };
 
@@ -196,7 +196,7 @@ const huggingface = {
     enabled: process.env.HUGGINGFACE_ENABLED === 'true',
     apiKey: process.env.HUGGINGFACE_API_KEY,
     baseURL: 'https://api-inference.huggingface.co/models',
-    
+
     models: {
         stableDiffusion: {
             name: 'stabilityai/stable-diffusion-xl-base-1.0',
@@ -209,14 +209,14 @@ const huggingface = {
             pricing: 0,
         },
     },
-    
+
     freeTier: {
         rateLimit: {
             requestsPerHour: 100,
             requestsPerDay: 1000,
         },
     },
-    
+
     timeout: 120000,
 };
 
@@ -224,7 +224,7 @@ const huggingface = {
 const localModel = {
     enabled: process.env.LOCAL_AI_ENABLED === 'true',
     baseURL: process.env.LOCAL_AI_BASE_URL || 'http://localhost:11434',
-    
+
     availableModels: {
         llama3: {
             name: 'llama3',
@@ -237,12 +237,12 @@ const localModel = {
             enabled: true,
         },
     },
-    
+
     settings: {
         contextWindow: 4096,
         temperature: 0.7,
     },
-    
+
     pricing: {
         perToken: 0,
     },
@@ -255,7 +255,7 @@ const creditCosts = {
         promptEnhancement: 2,
         moderation: 0,
     },
-    
+
     image: {
         textToImage: {
             replicate: 5,
@@ -266,7 +266,7 @@ const creditCosts = {
         backgroundRemoval: 1,
         faceRestore: 2,
     },
-    
+
     video: {
         textToVideo: {
             short: 10,
@@ -305,12 +305,12 @@ const featureFlags = {
             enabled: process.env.LOCAL_AI_ENABLED === 'true',
         },
     },
-    
+
     features: {
         imageGeneration: true,
         imageUpscaling: true,
-        videoGeneration: false,
-        batchProcessing: false,
+        videoGeneration: true,
+        batchProcessing: true,
         promptEnhancement: true,
     },
 };

@@ -65,29 +65,10 @@ function Blobs() {
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-const TABS = ["Inspiration", "Effects", "Library"];
+const TABS = ["Inspiration", "Library"];
+const USER_VIEWS = ["Profile", "Billing", "Settings"];
 
-const TRENDING = [
-  { bg: "linear-gradient(135deg,#1e1b4b,#4c1d95,#312e81)", tag: "Cinematic", title: "Astronaut on Mars at sunset" },
-  { bg: "linear-gradient(135deg,#0c4a6e,#0369a1,#075985)", tag: "Ocean", title: "Deep sea bioluminescence" },
-  { bg: "linear-gradient(135deg,#14532d,#15803d,#166534)", tag: "Nature", title: "Forest at golden hour" },
-  { bg: "linear-gradient(135deg,#4a044e,#7c3aed,#6b21a8)", tag: "Neon Noir", title: "Cyberpunk Tokyo rain night" },
-  { bg: "linear-gradient(135deg,#7c2d12,#c2410c,#9a3412)", tag: "Fire", title: "Volcano eruption timelapse" },
-  { bg: "linear-gradient(135deg,#0f172a,#1d4ed8,#1e3a5f)", tag: "Space", title: "Galaxy nebula formation" },
-  { bg: "linear-gradient(135deg,#134e4a,#0f766e,#14b8a6)", tag: "Anime", title: "Spirit fox through teal forest" },
-  { bg: "linear-gradient(135deg,#450a0a,#991b1b,#dc2626)", tag: "Drama", title: "Ancient battlefield at dawn" },
-];
 
-const EFFECTS = [
-  { icon: "🌀", name: "Vortex", desc: "Spiral warp" },
-  { icon: "💥", name: "Explosion", desc: "Cinematic burst" },
-  { icon: "🌊", name: "Fluid", desc: "Liquid morph" },
-  { icon: "⚡", name: "Glitch", desc: "Digital noise" },
-  { icon: "🔥", name: "Inferno", desc: "Fire simulation" },
-  { icon: "❄️", name: "Freeze", desc: "Ice crystals" },
-  { icon: "🌌", name: "Nebula", desc: "Space dust" },
-  { icon: "🪄", name: "Magic", desc: "Sparkle particles" },
-];
 
 const UI_DURATION_TO_API = {
   "5s": "short",
@@ -171,7 +152,7 @@ function VideoCard({ bg, tag, title, dur, status, delay = 0, onClick }) {
   );
 }
 
-// ─── PROMPT BOX ───────────────────────────────────────────────────────────────
+// ─── PROMPT BOX (Bottom Fixed Flow Style) ────────────────────────────────────
 function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video" }) {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("Cinematic");
@@ -183,6 +164,7 @@ function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video" }
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   const STYLES = ["Cinematic", "Anime", "3D Render", "Neon Noir", "Surreal"];
   const DURATIONS = ["5s", "10s", "15s", "30s"];
@@ -200,15 +182,15 @@ function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video" }
 
     try {
       const promptWithEffects = selectedEffect ? `${prompt.trim()}. Use ${selectedEffect} effect.` : prompt.trim();
-        const payload = {
-          type: mode === "image" ? "text-to-image" : "text-to-video",
-          prompt: promptWithEffects,
-          duration: UI_DURATION_TO_API[dur] || "short",
-          metadata: {
-            provider,
-            style,
-            ratio,
-            size,
+      const payload = {
+        type: mode === "image" ? "text-to-image" : "text-to-video",
+        prompt: promptWithEffects,
+        duration: UI_DURATION_TO_API[dur] || "short",
+        metadata: {
+          provider,
+          style,
+          ratio,
+          size,
           effect: selectedEffect || null,
           uiDuration: dur,
         },
@@ -217,247 +199,351 @@ function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video" }
       const response = await api.post("/generations", payload);
       const createdGeneration = response?.data?.data;
       setDone(true);
+      setPrompt("");
       onGenerated?.(createdGeneration);
+      setTimeout(() => setDone(false), 3000);
     } catch (error) {
       setErrorMessage(error?.response?.data?.message || "Generation failed. Please try again.");
+      setTimeout(() => setErrorMessage(""), 5000);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px" }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, background: "linear-gradient(to top, rgba(5,8,22,0.98) 0%, rgba(5,8,22,0.95) 70%, transparent 100%)", backdropFilter: "blur(24px)", padding: "20px 0 24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ maxWidth: 880, margin: "0 auto", padding: "0 20px" }}>
 
-      {/* Card with animated border — same as login */}
-      <div style={{ position: "relative", marginBottom: 16 }}>
-        <div style={{ position: "absolute", inset: -1, borderRadius: 18, background: "linear-gradient(135deg,#7c3aed,#06b6d4,#ec4899,#7c3aed)", backgroundSize: "300% 300%", animation: "borderSpin 5s ease infinite", opacity: 0.55, pointerEvents: "none" }} />
-        <div style={{ position: "relative", borderRadius: 18, background: "rgba(8,3,22,0.90)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
-
-          {/* Textarea */}
-          <textarea
-            value={prompt} onChange={e => setPrompt(e.target.value.slice(0, 500))}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
-            placeholder="Describe your story…  e.g. A cinematic shot of an astronaut walking on Mars at golden hour"
-            rows={3}
-            style={{ width: "100%", background: "transparent", border: "none", padding: "18px 18px 10px", color: "#fff", fontSize: 14, fontWeight: 300, lineHeight: 1.7, resize: "none", outline: "none", letterSpacing: "0.02em" }}
-          />
-
-          {/* Bottom row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px 14px", flexWrap: "wrap", gap: 8 }}>
-            <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 11 }}>{prompt.length}/500 · Enter ↵ to generate</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setMode("image")}
-                style={{
-                  padding: "7px 13px",
-                  borderRadius: 9,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: mode === "image" ? "rgba(34,211,238,0.25)" : "rgba(255,255,255,0.06)",
-                  color: mode === "image" ? "#67e8f9" : "rgba(255,255,255,0.4)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "all .18s",
-                }}
-              >
-                🖼 Image
-              </button>
-              <button
-                onClick={() => setMode("video")}
-                style={{
-                  padding: "7px 13px",
-                  borderRadius: 9,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: mode === "video" ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)",
-                  color: mode === "video" ? "#c4b5fd" : "rgba(255,255,255,0.4)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "all .18s",
-                }}
-              >
-                🎬 Video
-              </button>
-              <button onClick={generate} disabled={loading || !prompt.trim()} className="genbtn"
-                style={{
-                  padding: "7px 20px", borderRadius: 9, border: "none",
-                  background: prompt.trim() && !loading ? "linear-gradient(135deg,#7c3aed,#06b6d4)" : "rgba(255,255,255,0.1)",
-                  color: prompt.trim() && !loading ? "#fff" : "rgba(255,255,255,0.25)",
-                  fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", cursor: prompt.trim() && !loading ? "pointer" : "default",
-                  transition: "background .25s", fontFamily: "'Syne',sans-serif", textTransform: "uppercase"
-                }}
-              >
-                <span style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 7 }}>
-                  {loading ? <><span className="spin16" />Generating…</> : done ? <>✓ Request Submitted</> : <>Create with AI</>}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <AnimatePresence>
-            {loading && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: "hidden" }}>
-                <div style={{ padding: "0 14px 14px" }}>
-                  <div style={{ height: 3, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 5 }}>
-                    <motion.div initial={{ width: "0%" }} animate={{ width: "88%" }} transition={{ duration: 2.8, ease: "easeOut" }}
-                      style={{ height: "100%", background: "linear-gradient(90deg,#7c3aed,#06b6d4)", borderRadius: 999 }} />
+        {/* Settings Panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: 10, height: 0 }} transition={{ duration: 0.2 }}
+              style={{ marginBottom: 16, overflow: "hidden" }}>
+              <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "16px 18px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ flex: "1 1 auto", minWidth: 140 }}>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 600 }}>Style</p>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {STYLES.map(s => (
+                        <button key={s} onClick={() => setStyle(s)}
+                          style={{
+                            padding: "4px 10px", borderRadius: 7, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                            background: style === s ? "linear-gradient(135deg,#7c3aed,#06b6d4)" : "rgba(255,255,255,0.07)",
+                            color: style === s ? "#fff" : "rgba(255,255,255,0.5)"
+                          }}>{s}</button>
+                      ))}
+                    </div>
                   </div>
-                  <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>AI is rendering your {mode} in real time…</p>
+                  <div style={{ flex: "0 0 auto" }}>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 600 }}>Duration</p>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {DURATIONS.map(d => (
+                        <button key={d} onClick={() => setDur(d)}
+                          style={{
+                            padding: "4px 10px", borderRadius: 7, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                            background: dur === d ? "rgba(124,58,237,0.5)" : "rgba(255,255,255,0.07)",
+                            color: dur === d ? "#c4b5fd" : "rgba(255,255,255,0.5)"
+                          }}>{d}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ flex: "0 0 auto" }}>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 600 }}>AI Provider</p>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {(mode === "image" ? IMAGE_PROVIDERS : VIDEO_PROVIDERS).map((p) => (
+                        <button key={p} onClick={() => setProvider(p)}
+                          style={{
+                            padding: "4px 10px", borderRadius: 7, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                            background: provider === p ? "rgba(244,114,182,0.4)" : "rgba(255,255,255,0.07)",
+                            color: provider === p ? "#f9a8d4" : "rgba(255,255,255,0.5)",
+                            textTransform: "capitalize"
+                          }}>{p}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ flex: "0 0 auto" }}>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 600 }}>Ratio</p>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {RATIOS.map(r => (
+                        <button key={r} onClick={() => setRatio(r)}
+                          style={{
+                            padding: "4px 10px", borderRadius: 7, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                            background: ratio === r ? "rgba(6,182,212,0.4)" : "rgba(255,255,255,0.07)",
+                            color: ratio === r ? "#22d3ee" : "rgba(255,255,255,0.5)"
+                          }}>{r}</button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-            {done && !loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ padding: "0 14px 12px", display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ color: "#34d399", fontSize: 12, fontWeight: 600 }}>✓ Generation queued successfully</span>
-                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>Watch live status in your library →</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {errorMessage && (
-            <p style={{ padding: "0 14px 14px", color: "#f87171", fontSize: 12 }}>{errorMessage}</p>
+              </div>
+            </motion.div>
           )}
+        </AnimatePresence>
+
+        {/* Main Input Bar */}
+        <div style={{ position: "relative" }}>
+          <div style={{ position: "relative", borderRadius: 16, background: "rgba(8,3,22,0.95)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "10px 12px" }}>
+
+              {/* Mode Toggle */}
+              <div style={{ display: "flex", gap: 4, paddingBottom: 2 }}>
+                <button onClick={() => setMode("video")}
+                  style={{
+                    padding: "6px 10px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer", transition: "all .2s",
+                    background: mode === "video" ? "rgba(124,58,237,0.3)" : "transparent",
+                    color: mode === "video" ? "#c4b5fd" : "rgba(255,255,255,0.3)"
+                  }}>
+                  🎬
+                </button>
+                <button onClick={() => setMode("image")}
+                  style={{
+                    padding: "6px 10px", borderRadius: 8, border: "none", fontSize: 12, cursor: "pointer", transition: "all .2s",
+                    background: mode === "image" ? "rgba(34,211,238,0.25)" : "transparent",
+                    color: mode === "image" ? "#67e8f9" : "rgba(255,255,255,0.3)"
+                  }}>
+                  🖼
+                </button>
+              </div>
+
+              {/* Input */}
+              <textarea
+                value={prompt}
+                onChange={e => setPrompt(e.target.value.slice(0, 500))}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); } }}
+                placeholder={`Describe the ${mode} you want to create...`}
+                rows={1}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "none",
+                  padding: "8px 4px",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 400,
+                  lineHeight: 1.5,
+                  resize: "none",
+                  outline: "none",
+                  maxHeight: 120,
+                  overflowY: "auto",
+                  fontFamily: "'DM Sans',sans-serif"
+                }}
+                onInput={(e) => {
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                }}
+              />
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 6, alignItems: "center", paddingBottom: 2 }}>
+                <button onClick={() => setShowSettings(!showSettings)}
+                  style={{
+                    padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)",
+                    background: showSettings ? "rgba(255,255,255,0.1)" : "transparent",
+                    color: showSettings ? "#fff" : "rgba(255,255,255,0.4)",
+                    fontSize: 14, cursor: "pointer", transition: "all .2s"
+                  }}
+                  title="Settings">
+                  ⚙️
+                </button>
+                <button onClick={generate} disabled={loading || !prompt.trim()}
+                  style={{
+                    padding: "8px 18px", borderRadius: 10, border: "none",
+                    background: prompt.trim() && !loading ? "linear-gradient(135deg,#7c3aed,#06b6d4)" : "rgba(255,255,255,0.08)",
+                    color: prompt.trim() && !loading ? "#fff" : "rgba(255,255,255,0.3)",
+                    fontSize: 13, fontWeight: 700, cursor: prompt.trim() && !loading ? "pointer" : "default",
+                    transition: "all .2s", fontFamily: "'Syne',sans-serif",
+                    display: "flex", alignItems: "center", gap: 6
+                  }}>
+                  {loading ? <><span className="spin16" style={{ width: 12, height: 12, borderWidth: "2px" }} />Generating</> : done ? <>✓ Queued</> : <>Generate</>}
+                </button>
+              </div>
+            </div>
+
+            {/* Status Messages */}
+            <AnimatePresence>
+              {(loading || done || errorMessage) && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "8px 14px" }}>
+                  {loading && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 2, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <motion.div animate={{ x: ["-100%", "200%"] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                          style={{ height: "100%", width: "50%", background: "linear-gradient(90deg,transparent,#7c3aed,transparent)" }} />
+                      </div>
+                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Rendering...</span>
+                    </div>
+                  )}
+                  {done && !loading && (
+                    <p style={{ color: "#34d399", fontSize: 11, fontWeight: 600 }}>✓ Generation queued! Check your Library →</p>
+                  )}
+                  {errorMessage && (
+                    <p style={{ color: "#f87171", fontSize: 11 }}>{errorMessage}</p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", padding: "2px 4px" }}>
+// ─── PROFILE VIEW ─────────────────────────────────────────────────────────────
+function ProfileView({ user, stats }) {
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
+      style={{ maxWidth: 700, margin: "60px auto", padding: "40px 30px", background: "rgba(255,255,255,0.03)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 40 }}>
+        <div style={{ width: 100, height: 100, borderRadius: "50%", background: "linear-gradient(135deg,#7c3aed,#06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 800, color: "#fff" }}>{user.avatar}</div>
         <div>
-          <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Style</p>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {STYLES.map(s => (
-              <button key={s} onClick={() => setStyle(s)}
-                style={{
-                  padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                  background: style === s ? "linear-gradient(135deg,#7c3aed,#06b6d4)" : "rgba(255,255,255,0.07)",
-                  color: style === s ? "#fff" : "rgba(255,255,255,0.38)",
-                  outline: style === s ? "none" : "1px solid rgba(255,255,255,0.08)"
-                }}>{s}</button>
-            ))}
-          </div>
+          <h2 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: 32, fontWeight: 800 }}>{user.username}</h2>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 16 }}>{user.email}</p>
         </div>
-          <div>
-            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Duration</p>
-            <div style={{ display: "flex", gap: 5 }}>
-            {DURATIONS.map(d => (
-              <button key={d} onClick={() => setDur(d)}
-                style={{
-                  padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                  background: dur === d ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.07)",
-                  color: dur === d ? "#c4b5fd" : "rgba(255,255,255,0.38)",
-                  outline: dur === d ? "none" : "1px solid rgba(255,255,255,0.08)"
-                }}>{d}</button>
-            ))}
-            </div>
-          </div>
-          <div>
-            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>AI Provider</p>
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-              {(mode === "image" ? IMAGE_PROVIDERS : VIDEO_PROVIDERS).map((p) => (
-                <button key={p} onClick={() => setProvider(p)}
-                  style={{
-                    padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                    background: provider === p ? "rgba(244,114,182,0.32)" : "rgba(255,255,255,0.07)",
-                    color: provider === p ? "#f9a8d4" : "rgba(255,255,255,0.38)",
-                    outline: provider === p ? "none" : "1px solid rgba(255,255,255,0.08)"
-                  }}>{p}</button>
-              ))}
-            </div>
-          </div>
-          {mode === "image" && (
-            <div>
-            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Image Size</p>
-            <div style={{ display: "flex", gap: 5 }}>
-              {SIZES.map(s => (
-                <button key={s} onClick={() => setSize(s)}
-                  style={{
-                    padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                    background: size === s ? "rgba(16,185,129,0.32)" : "rgba(255,255,255,0.07)",
-                    color: size === s ? "#6ee7b7" : "rgba(255,255,255,0.38)",
-                    outline: size === s ? "none" : "1px solid rgba(255,255,255,0.08)"
-                  }}>{s}</button>
-              ))}
-            </div>
-          </div>
-        )}
-        <div>
-          <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Ratio</p>
-          <div style={{ display: "flex", gap: 5 }}>
-            {RATIOS.map(r => (
-              <button key={r} onClick={() => setRatio(r)}
-                style={{
-                  padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                  background: ratio === r ? "rgba(6,182,212,0.3)" : "rgba(255,255,255,0.07)",
-                  color: ratio === r ? "#22d3ee" : "rgba(255,255,255,0.38)",
-                  outline: ratio === r ? "none" : "1px solid rgba(255,255,255,0.08)"
-                }}>{r}</button>
-            ))}
-          </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ padding: 20, background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Total Generations</p>
+          <p style={{ color: "#fff", fontSize: 28, fontWeight: 800 }}>{stats?.totalGenerations || 0}</p>
+        </div>
+        <div style={{ padding: 20, background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.05)" }}>
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Member Since</p>
+          <p style={{ color: "#fff", fontSize: 24, fontWeight: 700 }}>{new Date(stats?.createdAt || Date.now()).toLocaleDateString()}</p>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── NAVBAR ───────────────────────────────────────────────────────────────────
-function Navbar({ user, tab, setTab, onLogout, live }) {
+// ─── BILLING VIEW ─────────────────────────────────────────────────────────────
+function BillingView({ user, stats }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+      style={{ maxWidth: 800, margin: "60px auto", padding: "0 20px" }}>
+      <div style={{ textAlign: "center", marginBottom: 50 }}>
+        <h2 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Billing & Credits</h2>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 16 }}>Manage your balance and subscription</p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginBottom: 40 }}>
+        <div style={{ padding: 30, background: "linear-gradient(135deg, rgba(124,58,237,0.1), rgba(6,182,212,0.1))", borderRadius: 24, border: "1px solid rgba(124,58,237,0.2)" }}>
+          <h3 style={{ color: "#c4b5fd", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Available Balance</h3>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 24 }}>
+            <span style={{ color: "#fff", fontSize: 48, fontWeight: 800 }}>{stats?.totalCredits || user.credits}</span>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 18 }}>Credits</span>
+          </div>
+          <button style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Top Up Now</button>
+        </div>
+
+        <div style={{ padding: 30, background: "rgba(255,255,255,0.03)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
+          <h3 style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Current Plan</h3>
+          <div style={{ marginBottom: 24 }}>
+            <span style={{ color: "#fff", fontSize: 32, fontWeight: 800, textTransform: "capitalize" }}>{stats?.plan || "Free"}</span>
+            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, marginTop: 4 }}>Basic usage, limit 5/day</p>
+          </div>
+          <button style={{ width: "100%", padding: "14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Upgrade Plan</button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── SETTINGS VIEW ────────────────────────────────────────────────────────────
+function SettingsView({ user, onUpdate }) {
+  const [form, setForm] = useState({ username: user.username, email: user.email });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.patch("/auth/me", form);
+      const updatedUser = { ...user, ...form };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      onUpdate(updatedUser);
+      alert("Settings updated!");
+    } catch (err) {
+      alert("Failed to update settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}
+      style={{ maxWidth: 600, margin: "60px auto", padding: "0 20px" }}>
+      <h2 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: 32, fontWeight: 800, marginBottom: 32 }}>Account Settings</h2>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div>
+          <label style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Username</label>
+          <input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })}
+            style={{ width: "100%", padding: "14px 18px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" }} />
+        </div>
+        <div>
+          <label style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Email Address</label>
+          <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+            style={{ width: "100%", padding: "14px 18px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" }} />
+        </div>
+        <button type="submit" disabled={loading} style={{ padding: "16px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #7c3aed, #06b6d4)", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", marginTop: 10 }}>
+          {loading ? "Saving..." : "Save Changes"}
+        </button>
+      </form>
+    </motion.div>
+  );
+}
+
+function Navbar({ user, tab, setTab, onLogout, live, stats }) {
   const [menu, setMenu] = useState(false);
   return (
-    <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, backdropFilter: "blur(20px)", background: "rgba(5,8,22,0.80)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", height: 58 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#7c3aed,#06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎬</div>
-            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: "#fff", letterSpacing: "0.06em" }}>Nexus</span>
-            <span style={{ color: "rgba(139,92,246,0.7)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em" }}>AI</span>
+    <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, backdropFilter: "blur(24px)", background: "rgba(5,8,22,0.85)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setTab("Inspiration")}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#7c3aed,#06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎬</div>
+            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 19, color: "#fff", letterSpacing: "0.02em" }}>Nexus</span>
           </div>
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
             {TABS.map(t => (
               <button key={t} onClick={() => setTab(t)}
                 style={{
-                  padding: "6px 18px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em", transition: "all .18s",
-                  background: tab === t ? "rgba(255,255,255,0.1)" : "transparent",
-                  color: tab === t ? "#fff" : "rgba(255,255,255,0.38)"
+                  padding: "8px 20px", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s cubic-bezier(0.4, 0, 0.2, 1)",
+                  background: tab === t ? "rgba(255,255,255,0.08)" : "transparent",
+                  color: tab === t ? "#fff" : "rgba(255,255,255,0.4)"
                 }}>{t}</button>
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 20, background: live ? "rgba(34,211,238,0.16)" : "rgba(148,163,184,0.12)", border: live ? "1px solid rgba(34,211,238,0.35)" : "1px solid rgba(148,163,184,0.25)" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: live ? "#22d3ee" : "#94a3b8", animation: live ? "pulse 2s ease-in-out infinite" : "none" }} />
-            <span style={{ color: live ? "#67e8f9" : "#94a3b8", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em" }}>LIVE</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 24, background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.2)" }}>
+            <span style={{ fontSize: 14 }}>⚡</span><span style={{ color: "#c4b5fd", fontSize: 13, fontWeight: 700 }}>{stats?.totalCredits || user.credits}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}>
-            <span>⚡</span><span style={{ color: "#c4b5fd", fontSize: 12, fontWeight: 700 }}>{user.credits}</span>
-          </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, border: "none", background: "linear-gradient(135deg,#7c3aed,#06b6d4)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "transform .15s" }}
-            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-          >✦ Upgrade</button>
           <div style={{ position: "relative" }}>
-            <div onClick={() => setMenu(o => !o)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px 4px 4px", borderRadius: 20, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "all .18s" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+            <div onClick={() => setMenu(o => !o)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 14px 5px 6px", borderRadius: 24, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", transition: "all .2s" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
             >
-              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#7c3aed,#06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>{user.avatar}</div>
-              <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, fontWeight: 500 }}>{user.username}</span>
-              <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>▾</span>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#7c3aed,#06b6d4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>{user.avatar}</div>
+              <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{user.username}</span>
             </div>
             <AnimatePresence>
               {menu && (
-                <motion.div initial={{ opacity: 0, y: -8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.95 }} transition={{ duration: 0.15 }}
-                  style={{ position: "absolute", top: 44, right: 0, background: "rgba(10,4,28,0.97)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 8, minWidth: 185, zIndex: 200 }}>
-                  <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", marginBottom: 4 }}>
-                    <p style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{user.username}</p>
-                    <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 11 }}>{user.email}</p>
+                <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} transition={{ duration: 0.2, ease: "easeOut" }}
+                  style={{ position: "absolute", top: 48, right: 0, background: "rgba(10,4,28,0.98)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 8, minWidth: 200, zIndex: 200, boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 6 }}>
+                    <p style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>{user.username}</p>
+                    <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>{user.email}</p>
                   </div>
-                  {["Profile", "Billing", "Settings"].map((it, i) => (
-                    <button key={i} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 14px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", borderRadius: 8, transition: "all .14s" }}
+                  {USER_VIEWS.map((it, i) => (
+                    <button key={i} onClick={() => { setTab(it); setMenu(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", borderRadius: 10, transition: "all .2s" }}
                       onMouseEnter={e => { e.target.style.background = "rgba(255,255,255,0.06)"; e.target.style.color = "#fff"; }}
                       onMouseLeave={e => { e.target.style.background = "none"; e.target.style.color = "rgba(255,255,255,0.5)"; }}
                     >{it}</button>
                   ))}
-                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: 4, paddingTop: 4 }}>
-                    <button onClick={onLogout} style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 14px", background: "none", border: "none", color: "rgba(248,113,113,0.75)", fontSize: 13, cursor: "pointer", borderRadius: 8 }}>Sign out</button>
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 6, paddingTop: 6 }}>
+                    <button onClick={onLogout} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", background: "none", border: "none", color: "#f87171", fontSize: 13, cursor: "pointer", borderRadius: 10, transition: "all .2s" }}
+                      onMouseEnter={e => e.target.style.background = "rgba(248,113,113,0.1)"}
+                      onMouseLeave={e => e.target.style.background = "none"}
+                    >Sign out</button>
                   </div>
                 </motion.div>
               )}
@@ -473,13 +559,14 @@ function Navbar({ user, tab, setTab, onLogout, live }) {
 export default function UserHome() {
   const navigate = useNavigate();
   const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-  const displayName = storedUser?.username || storedUser?.email || "user";
-  const user = {
+  const displayName = (storedUser?.username || storedUser?.email || "user");
+  const [user, setUser] = useState({
     username: storedUser?.username || displayName,
     email: storedUser?.email || "",
     avatar: (displayName[0] || "U").toUpperCase(),
     credits: storedUser?.credits ?? 12,
-  };
+  });
+
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -492,11 +579,19 @@ export default function UserHome() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [liveTick, setLiveTick] = useState(0);
   const [preview, setPreview] = useState(null);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     const id = setInterval(() => setLiveTick(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get("/credit/stats");
+      setStats(res.data?.data);
+    } catch (err) { }
+  };
 
   const fetchGenerations = useCallback(async () => {
     try {
@@ -504,12 +599,16 @@ export default function UserHome() {
       const items = res.data?.data || [];
       setLiveGenerations(items);
       setLastUpdatedAt(new Date().toISOString());
+      if (items.some(it => it.status === "completed")) {
+        fetchStats();
+      }
     } catch {
       // Keep dashboard usable even if live fetch fails
     }
   }, []);
 
   useEffect(() => {
+    fetchStats();
     const bootId = setTimeout(fetchGenerations, 0);
     const id = setInterval(fetchGenerations, 2500);
     return () => {
@@ -528,6 +627,7 @@ export default function UserHome() {
     setLastUpdatedAt(new Date().toISOString());
     setTab("Library");
     await fetchGenerations();
+    fetchStats();
   };
 
   const liveVideos = liveGenerations.map(mapGenerationToCard);
@@ -555,7 +655,7 @@ export default function UserHome() {
       `}</style>
 
       <Blobs /><SpaceCanvas />
-      <Navbar user={user} tab={tab} setTab={setTab} onLogout={logout} live={isLive} />
+      <Navbar user={user} tab={tab} setTab={setTab} onLogout={logout} live={isLive} stats={stats} />
 
       <div style={{ position: "relative", zIndex: 1, paddingTop: 58 }}>
         <AnimatePresence mode="wait">
@@ -565,7 +665,7 @@ export default function UserHome() {
             <motion.div key="insp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
 
               {/* Hero */}
-              <div style={{ textAlign: "center", padding: "56px 24px 44px" }}>
+              <div style={{ textAlign: "center", padding: "56px 24px 180px" }}>
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
                   style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 14px", borderRadius: 20, background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.28)", marginBottom: 20 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa", display: "inline-block", animation: "pulse 2s ease-in-out infinite" }} />
@@ -579,84 +679,22 @@ export default function UserHome() {
                 </motion.h1>
 
                 <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
-                  style={{ color: "rgba(255,255,255,0.3)", fontSize: 15, fontWeight: 300, marginBottom: 40 }}>
+                  style={{ color: "rgba(255,255,255,0.3)", fontSize: 15, fontWeight: 300 }}>
                   Describe any scene and watch AI bring it to life in seconds.
                 </motion.p>
-
-                <PromptBox onGenerated={handleGenerationCreated} />
               </div>
 
-              {/* Trending */}
-              <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 28px 72px" }}>
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                  <div>
-                    <h2 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: 18, fontWeight: 700 }}>Trending Generations</h2>
-                    <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 12, marginTop: 3 }}>Click any to use as your prompt</p>
-                  </div>
-                  <button style={{ padding: "6px 14px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", fontSize: 12, cursor: "pointer", transition: "all .18s" }}
-                    onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
-                    View All →
-                  </button>
-                </motion.div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
-                  {TRENDING.map((v, i) => <VideoCard key={i} {...v} delay={0.38 + i * 0.04} />)}
-                </div>
-              </div>
+
             </motion.div>
           )}
 
-          {/* ── EFFECTS ── */}
-          {tab === "Effects" && (
-            <motion.div key="effects" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <div style={{ maxWidth: 900, margin: "0 auto", padding: "52px 28px 72px" }}>
 
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} style={{ textAlign: "center", marginBottom: 44 }}>
-                  <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(26px,4vw,46px)", fontWeight: 800, color: "#fff", marginBottom: 10 }}>
-                    Video <span style={{ background: "linear-gradient(90deg,#a78bfa,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Effects</span>
-                  </h1>
-                  <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, fontWeight: 300 }}>Select an effect to apply to your next generation</p>
-                </motion.div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 48 }}>
-                  {EFFECTS.map((ef, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, y: 18, scale: 0.93 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: 0.08 + i * 0.05, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                      onClick={() => setSelectedEffect(selectedEffect === ef.name ? null : ef.name)}
-                      style={{
-                        padding: "24px 14px", background: selectedEffect === ef.name ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.05)",
-                        backdropFilter: "blur(14px)",
-                        border: `1px solid ${selectedEffect === ef.name ? "rgba(139,92,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-                        borderRadius: 16, textAlign: "center", cursor: "pointer", transition: "all .22s"
-                      }}
-                      whileHover={{ y: -5, boxShadow: "0 10px 32px rgba(124,58,237,0.22)" }}
-                      whileTap={{ scale: 0.96 }}
-                    >
-                      <div style={{ fontSize: 34, marginBottom: 10 }}>{ef.icon}</div>
-                      <p style={{ color: selectedEffect === ef.name ? "#c4b5fd" : "#fff", fontSize: 13, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 4 }}>{ef.name}</p>
-                      <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>{ef.desc}</p>
-                      {selectedEffect === ef.name && (
-                        <div style={{ marginTop: 8, padding: "2px 8px", borderRadius: 999, background: "rgba(139,92,246,0.3)", display: "inline-block", color: "#c4b5fd", fontSize: 10, fontWeight: 700 }}>✓ Selected</div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-                  style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, textAlign: "center", marginBottom: 22 }}>
-                  {selectedEffect ? `"${selectedEffect}" effect selected — describe your scene below` : "Select an effect above, then describe your scene"}
-                </motion.p>
-                <PromptBox onGenerated={handleGenerationCreated} selectedEffect={selectedEffect} />
-              </div>
-            </motion.div>
-          )}
 
           {/* ── LIBRARY ── */}
           {tab === "Library" && (
             <motion.div key="lib" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 28px 72px" }}>
+              <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 28px 200px" }}>
 
                 {/* Header */}
                 <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
@@ -778,8 +816,20 @@ export default function UserHome() {
             </motion.div>
           )}
 
+          {/* ── PROFILE ── */}
+          {tab === "Profile" && <ProfileView user={user} stats={stats} />}
+
+          {/* ── BILLING ── */}
+          {tab === "Billing" && <BillingView user={user} stats={stats} />}
+
+          {/* ── SETTINGS ── */}
+          {tab === "Settings" && <SettingsView user={user} onUpdate={(u) => setUser(u)} />}
+
         </AnimatePresence>
       </div>
+
+      {/* Global Bottom Input Box */}
+      <PromptBox onGenerated={handleGenerationCreated} />
     </div>
   );
 }
