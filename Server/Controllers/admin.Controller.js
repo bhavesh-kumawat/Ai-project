@@ -2,6 +2,10 @@ const asyncHandler = require('../utils/asyncHandler.utils');
 const User = require('../Models/User.models');
 const Generation = require('../Models/Generation.models');
 const Video = require('../Models/Video.models');
+const Credit = require('../Models/Credit.models');
+const Project = require('../Models/Project.model');
+const Template = require('../Models/Template.models');
+const { AppError } = require('../middleware/error.middleware');
 
 const getStats = asyncHandler(async (req, res) => {
   const [
@@ -63,7 +67,7 @@ const listUsers = asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     User.find(filter)
-      .select('username email role createdAt')
+      .select('username email role status createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
@@ -113,8 +117,74 @@ const listGenerations = asyncHandler(async (req, res) => {
   });
 });
 
+const banUser = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  if (String(req.user._id) === String(id)) {
+    return next(new AppError('You cannot ban yourself', 400));
+  }
+
+  const user = await User.findById(id);
+  if (!user) return next(new AppError('User not found', 404));
+
+  user.status = 'suspended';
+  await user.save();
+
+  res.json({ success: true, message: 'User banned', data: user });
+});
+
+const unbanUser = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const user = await User.findById(id);
+  if (!user) return next(new AppError('User not found', 404));
+
+  user.status = 'active';
+  await user.save();
+
+  res.json({ success: true, message: 'User unbanned', data: user });
+});
+
+const deleteUser = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  if (String(req.user._id) === String(id)) {
+    return next(new AppError('You cannot delete yourself', 400));
+  }
+
+  const user = await User.findById(id);
+  if (!user) return next(new AppError('User not found', 404));
+
+  const userId = user._id;
+
+  await Promise.all([
+    Credit.deleteOne({ user: userId }),
+    Generation.deleteMany({ user: userId }),
+    Video.deleteMany({ userId }),
+    Project.deleteMany({ userId }),
+    Project.updateMany({ 'collaborators.userId': userId }, { $pull: { collaborators: { userId } } }),
+    Template.updateMany({ createdBy: userId }, { $set: { createdBy: null, isOfficial: false } }),
+  ]);
+
+  await User.deleteOne({ _id: userId });
+
+  res.json({ success: true, message: 'User deleted permanently' });
+});
+
+const deleteGeneration = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const generation = await Generation.findById(id);
+  if (!generation) return next(new AppError('Generation not found', 404));
+
+  await Video.deleteMany({ generationId: generation._id });
+  await generation.deleteOne();
+
+  res.json({ success: true, message: 'Generation deleted' });
+});
+
 module.exports = {
   getStats,
   listUsers,
   listGenerations,
+  banUser,
+  unbanUser,
+  deleteUser,
+  deleteGeneration,
 };

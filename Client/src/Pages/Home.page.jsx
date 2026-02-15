@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   motion,
   useInView,
-  useAnimation,
   AnimatePresence,
 } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -277,7 +276,7 @@ function Home() {
     try {
       // Note: This requires the user to be logged in.
       // For now, we'll try to call the API and handle the error if not authenticated.
-      const response = await api.post("/generations", {
+      await api.post("/generations", {
         type: activeTab === "video" ? "text-to-video" : "text-to-image",
         prompt: prompt,
       });

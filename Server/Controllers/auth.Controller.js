@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken');
-const { jwt: jwtConfig } = require('../config/auth.config');
 const User = require('../Models/User.models');
 const { AppError } = require('../middleware/error.middleware');
+const authService = require('../services/auth.service');
+const authConfig = require('../config/auth.config');
 
 exports.login = async (req, res, next) => {
 
@@ -24,18 +24,26 @@ exports.login = async (req, res, next) => {
       return next(new AppError('Invalid email or password', 401));
     }
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role
-      },
-      jwtConfig.accessToken.secret,
-      { expiresIn: jwtConfig.accessToken.expiresIn }
+    if (user.status === "suspended") {
+      return next(new AppError("Account is suspended", 403));
+    }
+    if (user.status === "deleted") {
+      return next(new AppError("Account is deleted", 403));
+    }
+
+    const token = authService.generateAccessToken(user);
+    const refreshToken = authService.generateRefreshToken(user);
+
+    res.cookie(
+      authConfig.cookie.refreshTokenCookieName,
+      refreshToken,
+      authConfig.cookie.options
     );
 
     res.json({
       status: 'success',
       token,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -63,18 +71,19 @@ exports.register = async (req, res, next) => {
       password
     });
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        role: user.role
-      },
-      jwtConfig.accessToken.secret,
-      { expiresIn: jwtConfig.accessToken.expiresIn }
+    const token = authService.generateAccessToken(user);
+    const refreshToken = authService.generateRefreshToken(user);
+
+    res.cookie(
+      authConfig.cookie.refreshTokenCookieName,
+      refreshToken,
+      authConfig.cookie.options
     );
 
     res.status(201).json({
       status: 'success',
       token,
+      refreshToken,
       data: {
         user: {
           id: user._id,

@@ -5,6 +5,7 @@ import SpaceCanvas from "./SpaceCanvas.component";
 import Blobs from "./Blobs.component";
 import InputField from "./InputField.component";
 import SocialBtn from "./SocialBtn.component";
+const _MOTION = motion;
 
 function RegisterUI({
   form,

@@ -22,6 +22,8 @@ const aiConfig = require('../config/ai-services.config');
 const getService = (serviceName) => {
     const services = {
         openai: aiConfig.openai,
+        stability: aiConfig.stability,
+        gemini: aiConfig.gemini,
         replicate: aiConfig.replicate,
         huggingface: aiConfig.huggingface,
         local: aiConfig.localModel,
@@ -52,8 +54,8 @@ const isServiceEnabled = (serviceName) => {
  */
 const getRecommendedService = (operation) => {
     const recommendations = {
-        textToImage: 'replicate',
-        textToVideo: 'runway',
+        textToImage: 'openai',
+        textToVideo: 'stability',
         imageUpscale: 'replicate',
         chatCompletion: 'openai',
         moderation: 'openai',
@@ -202,7 +204,15 @@ const validateAIConfig = () => {
     if (isServiceEnabled('openai') && !aiConfig.openai.apiKey) {
         errors.push('OPENAI_API_KEY is required but not set');
     }
-    
+
+    if (isServiceEnabled('stability') && !aiConfig.stability?.apiKey) {
+        errors.push('STABILITY_API_KEY is required but not set');
+    }
+
+    if (isServiceEnabled('gemini') && !aiConfig.gemini?.apiKey) {
+        errors.push('GEMINI_API_KEY is required but not set');
+    }
+
     if (isServiceEnabled('replicate') && !aiConfig.replicate.apiKey) {
         errors.push('REPLICATE_API_KEY is required but not set');
     }

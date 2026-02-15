@@ -57,7 +57,8 @@ const authenticate = async (req, res, next) => {
         }
 
         // 4. Get user from database
-        const user = await User.findById(decoded.id).select('-password');
+        const resolvedUserId = decoded.id || decoded.userId;
+        const user = await User.findById(resolvedUserId).select('-password');
 
         if (!user) {
             return res.status(401).json({

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import LoginUI from "../components/loginuifile/LoginUI.component";
 import { loginUser } from "../Service/auth.service";
 
@@ -16,7 +17,7 @@ function Login() {
     e.preventDefault();
 
     if (!identifier || !password) {
-      alert("Please fill all fields");
+      toast.error("Please fill all fields");
       return;
     }
 
@@ -29,10 +30,11 @@ function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
+      toast.success("Login successful");
       setSuccess(true);
 
     } catch (error) {
-      alert(error.message || "Login failed");
+      toast.error(error.message || "Login failed");
     } finally {
       setLoading(false);
     }

@@ -9,5 +9,9 @@ router.use(authenticate, requireRole('admin'));
 router.get('/stats', adminController.getStats);
 router.get('/users', adminController.listUsers);
 router.get('/generations', adminController.listGenerations);
+router.patch('/users/:id/ban', adminController.banUser);
+router.patch('/users/:id/unban', adminController.unbanUser);
+router.delete('/users/:id', adminController.deleteUser);
+router.delete('/generations/:id', adminController.deleteGeneration);
 
 module.exports = router;

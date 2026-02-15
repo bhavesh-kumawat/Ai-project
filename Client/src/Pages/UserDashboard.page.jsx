@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+const _MOTION = motion;
 
 // ─── CANVAS ──────────────────────────────────────────────────────────────────
 function SpaceCanvas() {
@@ -88,12 +89,12 @@ const EFFECTS = [
   { icon: "🪄", name: "Magic", desc: "Sparkle particles" },
 ];
 
-const MY_VIDEOS = [
-  { bg: "linear-gradient(135deg,#312e81,#1e1b4b)", title: "Astronaut on Mars", dur: "15s", status: "done" },
-  { bg: "linear-gradient(135deg,#0c4a6e,#1e3a5f)", title: "Tokyo neon streets", dur: "10s", status: "done" },
-  { bg: "linear-gradient(135deg,#4a044e,#3b0764)", title: "Fantasy dragon flight", dur: "30s", status: "processing" },
-  { bg: "linear-gradient(135deg,#134e4a,#14532d)", title: "Ocean timelapse", dur: "15s", status: "done" },
-];
+const UI_DURATION_TO_API = {
+  "5s": "short",
+  "10s": "medium",
+  "15s": "long",
+  "30s": "long",
+};
 
 const formatTimeAgo = (value) => {
   if (!value) return "";
@@ -113,12 +114,14 @@ const mapGenerationToCard = (g) => {
   const duration = g?.metadata?.duration;
   const durLabel = duration === "short" ? "5s" : duration === "medium" ? "10s" : duration === "long" ? "20s" : "";
   const status = g?.status === "completed" ? "done" : g?.status === "processing" ? "processing" : g?.status === "failed" ? "failed" : "pending";
+  const mediaType = g?.type?.includes("image") ? "image" : "video";
   return {
     id: g._id,
     bg: "linear-gradient(135deg,#0f172a,#1e293b)",
     title: g.prompt || "Untitled",
     dur: durLabel,
     status,
+    mediaType,
     output: g.output || null,
     createdAt: g.createdAt,
   };
@@ -169,22 +172,57 @@ function VideoCard({ bg, tag, title, dur, status, delay = 0, onClick }) {
 }
 
 // ─── PROMPT BOX ───────────────────────────────────────────────────────────────
-function PromptBox({ onGenerated }) {
+function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video" }) {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState("Cinematic");
   const [dur, setDur] = useState("15s");
+  const [size, setSize] = useState("medium");
   const [ratio, setRatio] = useState("16:9");
+  const [mode, setMode] = useState(defaultMode);
+  const [provider, setProvider] = useState("openai");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const STYLES = ["Cinematic", "Anime", "3D Render", "Neon Noir", "Surreal"];
   const DURATIONS = ["5s", "10s", "15s", "30s"];
+  const SIZES = ["small", "medium", "large"];
   const RATIOS = ["16:9", "9:16", "1:1"];
+  const IMAGE_PROVIDERS = ["openai", "stability", "gemini"];
+  const VIDEO_PROVIDERS = ["stability", "openai", "gemini"];
 
-  const generate = () => {
+  const generate = async () => {
     if (!prompt.trim() || loading) return;
-    setLoading(true); setDone(false);
-    setTimeout(() => { setLoading(false); setDone(true); onGenerated?.(); }, 3000);
+
+    setLoading(true);
+    setDone(false);
+    setErrorMessage("");
+
+    try {
+      const promptWithEffects = selectedEffect ? `${prompt.trim()}. Use ${selectedEffect} effect.` : prompt.trim();
+        const payload = {
+          type: mode === "image" ? "text-to-image" : "text-to-video",
+          prompt: promptWithEffects,
+          duration: UI_DURATION_TO_API[dur] || "short",
+          metadata: {
+            provider,
+            style,
+            ratio,
+            size,
+          effect: selectedEffect || null,
+          uiDuration: dur,
+        },
+      };
+
+      const response = await api.post("/generations", payload);
+      const createdGeneration = response?.data?.data;
+      setDone(true);
+      onGenerated?.(createdGeneration);
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Generation failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -209,10 +247,36 @@ function PromptBox({ onGenerated }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px 14px", flexWrap: "wrap", gap: 8 }}>
             <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 11 }}>{prompt.length}/500 · Enter ↵ to generate</span>
             <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ padding: "7px 13px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", fontSize: 12, cursor: "pointer", transition: "all .18s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(139,92,246,0.5)"; e.currentTarget.style.color = "#a78bfa"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
-              >⬆ Image</button>
+              <button
+                onClick={() => setMode("image")}
+                style={{
+                  padding: "7px 13px",
+                  borderRadius: 9,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: mode === "image" ? "rgba(34,211,238,0.25)" : "rgba(255,255,255,0.06)",
+                  color: mode === "image" ? "#67e8f9" : "rgba(255,255,255,0.4)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all .18s",
+                }}
+              >
+                🖼 Image
+              </button>
+              <button
+                onClick={() => setMode("video")}
+                style={{
+                  padding: "7px 13px",
+                  borderRadius: 9,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: mode === "video" ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.06)",
+                  color: mode === "video" ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all .18s",
+                }}
+              >
+                🎬 Video
+              </button>
               <button onClick={generate} disabled={loading || !prompt.trim()} className="genbtn"
                 style={{
                   padding: "7px 20px", borderRadius: 9, border: "none",
@@ -223,7 +287,7 @@ function PromptBox({ onGenerated }) {
                 }}
               >
                 <span style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 7 }}>
-                  {loading ? <><span className="spin16" />Generating…</> : done ? <>✓ Video Ready</> : <>🎬 Generate</>}
+                  {loading ? <><span className="spin16" />Generating…</> : done ? <>✓ Request Submitted</> : <>Create with AI</>}
                 </span>
               </button>
             </div>
@@ -238,17 +302,20 @@ function PromptBox({ onGenerated }) {
                     <motion.div initial={{ width: "0%" }} animate={{ width: "88%" }} transition={{ duration: 2.8, ease: "easeOut" }}
                       style={{ height: "100%", background: "linear-gradient(90deg,#7c3aed,#06b6d4)", borderRadius: 999 }} />
                   </div>
-                  <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>AI is rendering your video…</p>
+                  <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>AI is rendering your {mode} in real time…</p>
                 </div>
               </motion.div>
             )}
             {done && !loading && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ padding: "0 14px 12px", display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ color: "#34d399", fontSize: 12, fontWeight: 600 }}>✓ Your video is ready!</span>
-                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>Check your library →</span>
+                <span style={{ color: "#34d399", fontSize: 12, fontWeight: 600 }}>✓ Generation queued successfully</span>
+                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>Watch live status in your library →</span>
               </motion.div>
             )}
           </AnimatePresence>
+          {errorMessage && (
+            <p style={{ padding: "0 14px 14px", color: "#f87171", fontSize: 12 }}>{errorMessage}</p>
+          )}
         </div>
       </div>
 
@@ -268,9 +335,9 @@ function PromptBox({ onGenerated }) {
             ))}
           </div>
         </div>
-        <div>
-          <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Duration</p>
-          <div style={{ display: "flex", gap: 5 }}>
+          <div>
+            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Duration</p>
+            <div style={{ display: "flex", gap: 5 }}>
             {DURATIONS.map(d => (
               <button key={d} onClick={() => setDur(d)}
                 style={{
@@ -280,8 +347,38 @@ function PromptBox({ onGenerated }) {
                   outline: dur === d ? "none" : "1px solid rgba(255,255,255,0.08)"
                 }}>{d}</button>
             ))}
+            </div>
           </div>
-        </div>
+          <div>
+            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>AI Provider</p>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {(mode === "image" ? IMAGE_PROVIDERS : VIDEO_PROVIDERS).map((p) => (
+                <button key={p} onClick={() => setProvider(p)}
+                  style={{
+                    padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                    background: provider === p ? "rgba(244,114,182,0.32)" : "rgba(255,255,255,0.07)",
+                    color: provider === p ? "#f9a8d4" : "rgba(255,255,255,0.38)",
+                    outline: provider === p ? "none" : "1px solid rgba(255,255,255,0.08)"
+                  }}>{p}</button>
+              ))}
+            </div>
+          </div>
+          {mode === "image" && (
+            <div>
+            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Image Size</p>
+            <div style={{ display: "flex", gap: 5 }}>
+              {SIZES.map(s => (
+                <button key={s} onClick={() => setSize(s)}
+                  style={{
+                    padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                    background: size === s ? "rgba(16,185,129,0.32)" : "rgba(255,255,255,0.07)",
+                    color: size === s ? "#6ee7b7" : "rgba(255,255,255,0.38)",
+                    outline: size === s ? "none" : "1px solid rgba(255,255,255,0.08)"
+                  }}>{s}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 7 }}>Ratio</p>
           <div style={{ display: "flex", gap: 5 }}>
@@ -393,33 +490,51 @@ export default function UserHome() {
   const [selectedEffect, setSelectedEffect] = useState(null);
   const [liveGenerations, setLiveGenerations] = useState([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [liveTick, setLiveTick] = useState(0);
   const [preview, setPreview] = useState(null);
 
   useEffect(() => {
-    let active = true;
-    const fetchGenerations = async () => {
-      try {
-        const res = await api.get("/generations?limit=12");
-        const items = res.data?.data || [];
-        if (active) {
-          setLiveGenerations(items);
-          setLastUpdatedAt(new Date().toISOString());
-        }
-      } catch (error) {
-        // Keep dashboard usable even if live fetch fails
-      }
-    };
-
-    fetchGenerations();
-    const id = setInterval(fetchGenerations, 10000);
-    return () => { active = false; clearInterval(id); };
+    const id = setInterval(() => setLiveTick(Date.now()), 1000);
+    return () => clearInterval(id);
   }, []);
 
+  const fetchGenerations = useCallback(async () => {
+    try {
+      const res = await api.get("/generations?limit=24");
+      const items = res.data?.data || [];
+      setLiveGenerations(items);
+      setLastUpdatedAt(new Date().toISOString());
+    } catch {
+      // Keep dashboard usable even if live fetch fails
+    }
+  }, []);
+
+  useEffect(() => {
+    const bootId = setTimeout(fetchGenerations, 0);
+    const id = setInterval(fetchGenerations, 2500);
+    return () => {
+      clearTimeout(bootId);
+      clearInterval(id);
+    };
+  }, [fetchGenerations]);
+
+  const handleGenerationCreated = async (generation) => {
+    if (generation?._id) {
+      setLiveGenerations((prev) => {
+        const filtered = prev.filter((item) => item._id !== generation._id);
+        return [generation, ...filtered].slice(0, 24);
+      });
+    }
+    setLastUpdatedAt(new Date().toISOString());
+    setTab("Library");
+    await fetchGenerations();
+  };
+
   const liveVideos = liveGenerations.map(mapGenerationToCard);
-  const libraryVideos = liveVideos.length ? liveVideos : MY_VIDEOS;
+  const libraryVideos = liveVideos;
   const completedCount = libraryVideos.filter(v => v.status === "done").length;
   const processingCount = libraryVideos.filter(v => v.status === "processing").length;
-  const isLive = lastUpdatedAt ? (Date.now() - new Date(lastUpdatedAt).getTime() < 20000) : false;
+  const isLive = lastUpdatedAt ? (liveTick - new Date(lastUpdatedAt).getTime() < 20000) : false;
 
   return (
     <div style={{ minHeight: "100vh", background: "#050816", fontFamily: "'DM Sans',sans-serif" }}>
@@ -468,7 +583,7 @@ export default function UserHome() {
                   Describe any scene and watch AI bring it to life in seconds.
                 </motion.p>
 
-                <PromptBox />
+                <PromptBox onGenerated={handleGenerationCreated} />
               </div>
 
               {/* Trending */}
@@ -533,7 +648,7 @@ export default function UserHome() {
                   style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, textAlign: "center", marginBottom: 22 }}>
                   {selectedEffect ? `"${selectedEffect}" effect selected — describe your scene below` : "Select an effect above, then describe your scene"}
                 </motion.p>
-                <PromptBox />
+                <PromptBox onGenerated={handleGenerationCreated} selectedEffect={selectedEffect} />
               </div>
             </motion.div>
           )}
@@ -548,7 +663,7 @@ export default function UserHome() {
                   style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28 }}>
                   <div>
                     <h1 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: "clamp(22px,3.5vw,36px)", fontWeight: 800, marginBottom: 5 }}>My Library</h1>
-                    <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, fontWeight: 300 }}>{libraryVideos.length} videos</p>
+                    <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, fontWeight: 300 }}>{libraryVideos.length} creations</p>
                   </div>
                   <button onClick={() => setTab("Inspiration")}
                     style={{ padding: "9px 20px", borderRadius: 11, border: "none", background: "linear-gradient(135deg,#7c3aed,#06b6d4)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Syne',sans-serif" }}>
@@ -574,16 +689,23 @@ export default function UserHome() {
                 </div>
 
                 {/* Video grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14, marginBottom: 32 }}>
-                  {libraryVideos.map((v, i) => (
-                    <VideoCard
-                      key={v.id || i}
-                      {...v}
-                      delay={0.2 + i * 0.07}
-                      onClick={() => setPreview(v)}
-                    />
-                  ))}
-                </div>
+                {libraryVideos.length > 0 ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14, marginBottom: 32 }}>
+                    {libraryVideos.map((v, i) => (
+                      <VideoCard
+                        key={v.id || i}
+                        {...v}
+                        delay={0.2 + i * 0.07}
+                        onClick={() => setPreview(v)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 32, borderRadius: 14, border: "1px dashed rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.03)", padding: "28px 24px", textAlign: "center" }}>
+                    <p style={{ color: "#fff", fontSize: 16, fontWeight: 700, marginBottom: 6 }}>No generations yet</p>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>Create your first image or video from the Inspiration tab.</p>
+                  </div>
+                )}
 
                 <AnimatePresence>
                   {preview && (
@@ -616,11 +738,19 @@ export default function UserHome() {
                         </div>
                         <div style={{ padding: 16 }}>
                           {preview.status === "done" && preview.output ? (
-                            <video
-                              src={preview.output}
-                              controls
-                              style={{ width: "100%", borderRadius: 12, background: "#000" }}
-                            />
+                            preview.mediaType === "image" ? (
+                              <img
+                                src={preview.output}
+                                alt={preview.title}
+                                style={{ width: "100%", borderRadius: 12, background: "#000", objectFit: "contain", maxHeight: "70vh" }}
+                              />
+                            ) : (
+                              <video
+                                src={preview.output}
+                                controls
+                                style={{ width: "100%", borderRadius: 12, background: "#000" }}
+                              />
+                            )
                           ) : (
                             <div style={{ height: 320, borderRadius: 12, background: "linear-gradient(135deg,#0f172a,#1e293b)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)", border: "1px dashed rgba(255,255,255,0.2)" }}>
                               {preview.status === "processing" ? "Live rendering in progress…" : preview.status === "pending" ? "Queued for processing…" : "No preview available"}

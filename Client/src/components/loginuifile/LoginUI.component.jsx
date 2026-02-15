@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import InputField from "./InputField.component";
 import Blobs from "./Blobs.component";
 import SpaceCanvas from "./SpaceCanvas.component";
+const _MOTION = motion;
 
 function LoginUI({
   identifier,
@@ -11,7 +12,6 @@ function LoginUI({
   setPassword,
   handleSubmit,
   loading,
-  success,
 }) {
   return (
     <div

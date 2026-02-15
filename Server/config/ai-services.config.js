@@ -21,8 +21,8 @@ require('dotenv').config();
 const globalConfig = {
     environment: process.env.NODE_ENV || 'development',
     defaultTextProvider: process.env.AI_TEXT_PROVIDER || 'openai',
-    defaultImageProvider: process.env.AI_IMAGE_PROVIDER || 'replicate',
-    defaultVideoProvider: process.env.AI_VIDEO_PROVIDER || 'runway',
+    defaultImageProvider: process.env.AI_IMAGE_PROVIDER || 'openai',
+    defaultVideoProvider: process.env.AI_VIDEO_PROVIDER || 'stability',
     timeout: Number(process.env.AI_TIMEOUT) || 60000,
     
     retry: {
@@ -79,7 +79,7 @@ const openai = {
     
     dalle: {
         enabled: process.env.DALLE_ENABLED !== 'false',
-        model: 'dall-e-3',
+        model: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
         size: '1024x1024',
         quality: 'standard',
         style: 'vivid',
@@ -97,6 +97,46 @@ const openai = {
     },
     
     timeout: 120000,
+};
+
+// ============================================================================
+// STABILITY CONFIGURATION
+// ============================================================================
+
+const stability = {
+    enabled: process.env.STABILITY_ENABLED !== 'false',
+    apiKey: process.env.STABILITY_API_KEY,
+    baseURL: process.env.STABILITY_BASE_URL || 'https://api.stability.ai',
+
+    endpoints: {
+        textToImage: '/v2beta/stable-image/generate/core',
+        imageToVideo: '/v2beta/image-to-video',
+    },
+
+    image: {
+        outputFormat: process.env.STABILITY_IMAGE_FORMAT || 'png',
+        aspectRatio: process.env.STABILITY_ASPECT_RATIO || '1:1',
+    },
+
+    video: {
+        pollIntervalMs: Number(process.env.STABILITY_VIDEO_POLL_INTERVAL_MS) || 5000,
+        maxPollAttempts: Number(process.env.STABILITY_VIDEO_MAX_POLL_ATTEMPTS) || 60,
+    },
+
+    timeout: Number(process.env.STABILITY_TIMEOUT_MS) || 300000,
+};
+
+// ============================================================================
+// GEMINI CONFIGURATION
+// ============================================================================
+
+const gemini = {
+    enabled: process.env.GEMINI_ENABLED !== 'false',
+    apiKey: process.env.GEMINI_API_KEY,
+    baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    imageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.0-flash-exp-image-generation',
+    videoModel: process.env.GEMINI_VIDEO_MODEL || '',
+    timeout: Number(process.env.GEMINI_TIMEOUT_MS) || 180000,
 };
 
 
@@ -249,6 +289,12 @@ const featureFlags = {
             dalle: process.env.DALLE_ENABLED !== 'false',
             gpt4: process.env.GPT4_ENABLED === 'true',
         },
+        stability: {
+            enabled: process.env.STABILITY_ENABLED !== 'false',
+        },
+        gemini: {
+            enabled: process.env.GEMINI_ENABLED !== 'false',
+        },
         replicate: {
             enabled: process.env.REPLICATE_ENABLED !== 'false',
         },
@@ -273,6 +319,8 @@ const featureFlags = {
 module.exports = {
     global: globalConfig,
     openai,
+    stability,
+    gemini,
     replicate,
     huggingface,
     localModel,

@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { getAdminStats, getAdminUsers } from "../Service/admin.service";
+import toast from "react-hot-toast";
+import { getAdminStats, getAdminUsers, getAdminGenerations, banAdminUser, unbanAdminUser, deleteAdminUser, deleteAdminGeneration } from "../Service/admin.service";
+const _MOTION = motion;
 
 // ─── CANVAS (red tinted meteors for admin) ────────────────────────────────────
 function SpaceCanvas() {
@@ -67,23 +69,6 @@ function Blobs() {
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const NAV_TABS = ["Overview", "Users", "Videos", "Analytics", "Moderation", "Settings"];
 
-const USERS = [
-  { id: 1, name: "john_doe", email: "john@ex.com", role: "user", status: "active", videos: 18, credits: 120, joined: "Jan 12" },
-  { id: 2, name: "sarah_k", email: "sarah@ex.com", role: "user", status: "active", videos: 9, credits: 340, joined: "Jan 18" },
-  { id: 3, name: "mike_92", email: "mike@ex.com", role: "user", status: "inactive", videos: 2, credits: 0, joined: "Feb 2" },
-  { id: 4, name: "alex_dev", email: "alex@ex.com", role: "admin", status: "active", videos: 55, credits: 999, joined: "Dec 30" },
-  { id: 5, name: "priya_m", email: "priya@ex.com", role: "user", status: "active", videos: 7, credits: 80, joined: "Feb 8" },
-  { id: 6, name: "chen_liu", email: "chen@ex.com", role: "user", status: "pending", videos: 0, credits: 50, joined: "Feb 11" },
-];
-
-const RECENT_VIDEOS = [
-  { user: "john_doe", prompt: "Astronaut on Mars at sunset", style: "Cinematic", dur: "15s", status: "completed", time: "5m ago" },
-  { user: "sarah_k", prompt: "Neon Tokyo rain cyberpunk", style: "Neon Noir", dur: "10s", status: "completed", time: "12m ago" },
-  { user: "mike_92", prompt: "Fantasy dragon flying", style: "3D Render", dur: "30s", status: "failed", time: "1h ago" },
-  { user: "priya_m", prompt: "Abstract fluid morphing", style: "Surreal", dur: "10s", status: "processing", time: "2m ago" },
-  { user: "chen_liu", prompt: "Cherry blossom anime scene", style: "Anime", dur: "15s", status: "completed", time: "3h ago" },
-];
-
 const MOD_QUEUE = [
   { user: "john_doe", prompt: "Dark battle scene with graphic violence", reason: "Violence", bg: "linear-gradient(135deg,#7c2d12,#1c1917)", time: "10m ago" },
   { user: "mike_92", prompt: "Realistic weapon showcase close-up", reason: "Weapons", bg: "linear-gradient(135deg,#365314,#1a2e05)", time: "1h ago" },
@@ -109,7 +94,7 @@ const formatTimeAgo = (value) => {
 };
 
 // ─── SMALL HELPERS ────────────────────────────────────────────────────────────
-const SC = { completed: "#34d399", processing: "#fbbf24", failed: "#f87171", active: "#34d399", inactive: "#6b7280", pending: "#fbbf24" };
+const SC = { completed: "#34d399", processing: "#fbbf24", failed: "#f87171", active: "#34d399", inactive: "#6b7280", pending: "#fbbf24", suspended: "#f87171", deleted: "#6b7280" };
 
 function Badge({ label, color, bg }) {
   return <span style={{ padding: "2px 8px", borderRadius: 999, background: bg || `${color}18`, color, fontSize: 10, fontWeight: 700, textTransform: "uppercase", display: "inline-block" }}>{label}</span>;
@@ -120,15 +105,18 @@ function StatCard({ icon, label, value, change, color, delay }) {
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       style={{ padding: "20px 22px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, position: "relative", overflow: "hidden" }}
-      whileHover={{ y: -3, boxShadow: `0 8px 28px ${color}20` }} transition={{ duration: 0.2 }}>
+      whileHover={{ y: -3, boxShadow: `0 8px 28px ${color}20` }} >
       <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, background: `radial-gradient(circle at 80% 20%,${color}18,transparent 70%)`, pointerEvents: "none" }} />
+      
       <div style={{ fontSize: 22, marginBottom: 10 }}>{icon}</div>
+
       <p style={{ color: "rgba(255,255,255,0.32)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 3 }}>{label}</p>
       <p style={{ color: "#fff", fontSize: 26, fontWeight: 800, fontFamily: "'Syne',sans-serif", lineHeight: 1 }}>{value}</p>
       {change && <p style={{ color: pos ? "#34d399" : "#f87171", fontSize: 11, marginTop: 5, fontWeight: 500 }}>{change}</p>}
     </motion.div>
   );
 }
+
 
 function BarChart({ data, color = "#7c3aed" }) {
   const max = Math.max(...data.map(d => d.v));
@@ -206,66 +194,110 @@ export default function AdminDashboard() {
   const [modQueue, setModQueue] = useState(MOD_QUEUE);
   const [stats, setStats] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminGenerations, setAdminGenerations] = useState([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [liveTick, setLiveTick] = useState(0);
 
   useEffect(() => {
-    let active = true;
-    const fetchAdminLive = async () => {
-      try {
-        const [statsRes, usersRes] = await Promise.all([
-          getAdminStats(),
-          getAdminUsers({ q: searchQuery, limit: 20 }),
-        ]);
-        if (!active) return;
-        setStats(statsRes?.data || null);
-        setAdminUsers(usersRes?.data || []);
-        setLastUpdatedAt(new Date().toISOString());
-      } catch (error) {
-        // keep UI usable on failed live fetch
-      }
-    };
+    const id = setInterval(() => setLiveTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-    fetchAdminLive();
-    const id = setInterval(fetchAdminLive, 10000);
-    return () => { active = false; clearInterval(id); };
+  const fetchAdminLive = useCallback(async () => {
+    try {
+      const [statsRes, usersRes, generationsRes] = await Promise.all([
+        getAdminStats(),
+        getAdminUsers({ q: searchQuery, limit: 20 }),
+        getAdminGenerations({ limit: 25 }),
+      ]);
+      setStats(statsRes?.data || null);
+      setAdminUsers(usersRes?.data || []);
+      setAdminGenerations(generationsRes?.data || []);
+      setLastUpdatedAt(new Date().toISOString());
+    } catch {
+      // keep UI usable on failed live fetch
+    }
   }, [searchQuery]);
 
-  const effectiveUsers = adminUsers.length
-    ? adminUsers.map((u, idx) => ({
-        id: idx + 1,
-        name: u.username || u.email || "user",
-        email: u.email || "",
-        role: u.role || "user",
-        status: "active",
-        videos: 0,
-        credits: 0,
-        joined: formatTimeAgo(u.createdAt),
-      }))
-    : USERS;
+  useEffect(() => {
+    const bootId = setTimeout(fetchAdminLive, 0);
+    const id = setInterval(fetchAdminLive, 2500);
+    return () => {
+      clearTimeout(bootId);
+      clearInterval(id);
+    };
+  }, [fetchAdminLive]);
+
+  const effectiveUsers = adminUsers.map((u, idx) => ({
+    id: u._id || idx + 1,
+    name: u.username || u.email || "user",
+    email: u.email || "",
+    role: u.role || "user",
+    status: u.status || "active",
+    videos: 0,
+    credits: 0,
+    joined: formatTimeAgo(u.createdAt),
+  }));
 
   const filteredUsers = effectiveUsers.filter(u =>
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const recentLive = stats?.recentGenerations || [];
-  const recentVideos = recentLive.length
-    ? recentLive.map((g) => ({
-        user: g.user?.username || g.user?.email || "user",
-        prompt: g.prompt || "Untitled",
-        style: g.modelUsed || "Default",
-        dur: g.metadata?.duration || "—",
-        status: g.status || "pending",
-        time: formatTimeAgo(g.createdAt),
-      }))
-    : RECENT_VIDEOS;
+  const recentLive = adminGenerations.length ? adminGenerations : (stats?.recentGenerations || []);
+  const recentVideos = recentLive.map((g) => ({
+    user: g.user?.username || g.user?.email || "user",
+    prompt: g.prompt || "Untitled",
+    style: g.modelUsed || "Default",
+    dur: g.metadata?.duration || "—",
+    status: g.status || "pending",
+    time: formatTimeAgo(g.createdAt),
+  }));
 
   const totals = stats?.totals || {};
   const statusCounts = stats?.status || {};
   const queueDepth = (statusCounts.pending || 0) + (statusCounts.processing || 0);
-  const isLive = lastUpdatedAt ? (Date.now() - new Date(lastUpdatedAt).getTime() < 20000) : false;
+  const isLive = lastUpdatedAt ? (liveTick - new Date(lastUpdatedAt).getTime() < 20000) : false;
 
   const removeFromQueue = (i) => setModQueue(q => q.filter((_, idx) => idx !== i));
+
+  const handleBanToggle = async (target) => {
+    try {
+      if (target.status === "suspended") {
+        await unbanAdminUser(target.id);
+        toast.success("User unbanned");
+      } else {
+        await banAdminUser(target.id);
+        toast.success("User banned");
+      }
+      await fetchAdminLive();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Action failed");
+    }
+  };
+
+  const handleDeleteUser = async (target) => {
+    if (!window.confirm(`Delete user ${target.name}?`)) return;
+    try {
+      await deleteAdminUser(target.id);
+      toast.success("User deleted");
+      await fetchAdminLive();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const handleDeleteGeneration = async (generationId) => {
+    if (!generationId) return;
+    if (!window.confirm("Delete this generation?")) return;
+    try {
+      await deleteAdminGeneration(generationId);
+      toast.success("Generation deleted");
+      await fetchAdminLive();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Delete failed");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#050816", fontFamily: "'DM Sans',sans-serif" }}>
@@ -301,12 +333,12 @@ export default function AdminDashboard() {
 
                 {/* Stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 24 }}>
-                  <StatCard icon="🎬" label="Total Videos" value={totals.videos ?? 0} change="+12% week" color="#a78bfa" delay={0.08} />
-                  <StatCard icon="👥" label="Total Users" value={totals.users ?? 0} change="+2 week" color="#22d3ee" delay={0.14} />
-                  <StatCard icon="⚡" label="API Calls Today" value="4,891" change="+18%" color="#fb923c" delay={0.20} />
-                  <StatCard icon="💰" label="Revenue MTD" value="$2,340" change="+8%" color="#34d399" delay={0.26} />
-                  <StatCard icon="⚠️" label="Failed Jobs" value={statusCounts.failed ?? 0} change="-3%" color="#f87171" delay={0.32} />
-                  <StatCard icon="🔄" label="Queue Depth" value={queueDepth} change="avg 12s" color="#fbbf24" delay={0.38} />
+                  <StatCard icon="🎬" label="Total Videos" value={totals.videos ?? 0} change={null} color="#a78bfa" delay={0.08} />
+                  <StatCard icon="👥" label="Total Users" value={totals.users ?? 0} change={null} color="#22d3ee" delay={0.14} />
+                  <StatCard icon="⚡" label="Requests" value={totals.generations ?? 0} change={null} color="#fb923c" delay={0.20} />
+                  <StatCard icon="💰" label="Revenue" value="$0.00" change="No billing data" color="#34d399" delay={0.26} />
+                  <StatCard icon="⚠️" label="Failed Jobs" value={statusCounts.failed ?? 0} change={null} color="#f87171" delay={0.32} />
+                  <StatCard icon="🔄" label="Queue Depth" value={queueDepth} change={null} color="#fbbf24" delay={0.38} />
                 </div>
 
                 {/* Charts row */}
@@ -352,9 +384,14 @@ export default function AdminDashboard() {
                     <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif" }}>Recent Generation Jobs</p>
                     <button onClick={() => setActiveTab("Videos")} style={{ color: "#a78bfa", fontSize: 12, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>View All →</button>
                   </div>
+                  {recentVideos.length === 0 && (
+                    <div style={{ padding: "16px 20px", color: "rgba(255,255,255,0.35)", fontSize: 12 }}>
+                      No generations found yet.
+                    </div>
+                  )}
                   {recentVideos.map((v, i) => (
                     <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.58 + i * 0.05 }}
-                      style={{ display: "grid", gridTemplateColumns: "100px 1fr 90px 60px 100px 70px", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: i < RECENT_VIDEOS.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", transition: "background .12s" }}
+                      style={{ display: "grid", gridTemplateColumns: "100px 1fr 90px 60px 100px 70px", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: i < recentVideos.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", transition: "background .12s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                       <span style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>@{v.user}</span>
@@ -410,12 +447,18 @@ export default function AdminDashboard() {
                       <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center" }}>{u.videos}</span>
                       <span style={{ color: "#c4b5fd", fontSize: 12, fontWeight: 600 }}>⚡{u.credits}</span>
                       <div style={{ display: "flex", gap: 5 }}>
-                        {["Edit", "Ban", "Del"].map((a, ai) => (
-                          <button key={ai} style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: a === "Del" ? "rgba(248,113,113,0.6)" : "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", transition: "all .14s" }}
-                            onMouseEnter={e => { e.target.style.borderColor = a === "Del" ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.25)"; e.target.style.color = a === "Del" ? "#f87171" : "#fff"; }}
-                            onMouseLeave={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.color = a === "Del" ? "rgba(248,113,113,0.6)" : "rgba(255,255,255,0.4)"; }}
-                          >{a}</button>
-                        ))}
+                        <button
+                          onClick={() => handleBanToggle(u)}
+                          style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer", transition: "all .14s" }}
+                        >
+                          {u.status === "suspended" ? "Unban" : "Ban"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u)}
+                          style={{ padding: "3px 7px", borderRadius: 5, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.08)", color: "rgba(248,113,113,0.6)", fontSize: 10, cursor: "pointer", transition: "all .14s" }}
+                        >
+                          Del
+                        </button>
                       </div>
                     </motion.div>
                   ))}
@@ -458,9 +501,14 @@ export default function AdminDashboard() {
                       <span key={i} style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>{h}</span>
                     ))}
                   </div>
+                  {recentVideos.length === 0 && (
+                    <div style={{ padding: "16px 18px", color: "rgba(255,255,255,0.35)", fontSize: 12 }}>
+                      No platform generation jobs found yet.
+                    </div>
+                  )}
                   {recentVideos.map((v, i) => (
                     <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                      style={{ display: "grid", gridTemplateColumns: "1fr 100px 90px 60px 100px 70px 60px", gap: 0, padding: "13px 18px", borderBottom: i < RECENT_VIDEOS.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", alignItems: "center", transition: "background .12s" }}
+                      style={{ display: "grid", gridTemplateColumns: "1fr 100px 90px 60px 100px 70px 60px", gap: 0, padding: "13px 18px", borderBottom: i < recentVideos.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", alignItems: "center", transition: "background .12s" }}
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                       <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 10 }}>{v.prompt}</span>
@@ -469,9 +517,17 @@ export default function AdminDashboard() {
                       <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>{v.dur}</span>
                       <Badge label={v.status} color={SC[v.status]} />
                       <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>{v.time}</span>
-                      <button style={{ padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.08)", color: "rgba(248,113,113,0.6)", fontSize: 10, cursor: "pointer" }}
+                      <button
+                        onClick={() => {
+                          const target = recentLive[i];
+                          handleDeleteGeneration(target?._id);
+                        }}
+                        style={{ padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.08)", color: "rgba(248,113,113,0.6)", fontSize: 10, cursor: "pointer" }}
                         onMouseEnter={e => { e.target.style.background = "rgba(248,113,113,0.2)"; e.target.style.color = "#f87171"; }}
-                        onMouseLeave={e => { e.target.style.background = "rgba(248,113,113,0.08)"; e.target.style.color = "rgba(248,113,113,0.6)"; }}>Del</button>
+                        onMouseLeave={e => { e.target.style.background = "rgba(248,113,113,0.08)"; e.target.style.color = "rgba(248,113,113,0.6)"; }}
+                      >
+                        Del
+                      </button>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -504,12 +560,15 @@ export default function AdminDashboard() {
                 <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                   style={{ padding: "20px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
                   <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 16 }}>Top Users by Videos Generated</p>
-                  {[...USERS].sort((a, b) => b.videos - a.videos).map((u, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < USERS.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                  {effectiveUsers.length === 0 && (
+                    <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>No user activity yet.</p>
+                  )}
+                  {[...effectiveUsers].sort((a, b) => b.videos - a.videos).map((u, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: i < effectiveUsers.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                       <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 13, fontWeight: 700, width: 22 }}>#{i + 1}</span>
                       <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, flex: 1 }}>{u.name}</span>
                       <div style={{ flex: 3, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${(u.videos / 55) * 100}%` }} transition={{ delay: 0.35 + i * 0.06, duration: 0.7 }}
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${(u.videos / Math.max(1, effectiveUsers[0]?.videos || 1)) * 100}%` }} transition={{ delay: 0.35 + i * 0.06, duration: 0.7 }}
                           style={{ height: "100%", background: "linear-gradient(90deg,#dc2626,#ea580c)", borderRadius: 999 }} />
                       </div>
                       <span style={{ color: "#fca5a5", fontSize: 13, fontWeight: 600, minWidth: 28, textAlign: "right" }}>{u.videos}</span>

@@ -2,6 +2,7 @@ const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinar
 const asyncHandler = require('../utils/asyncHandler.utils');
 const Generation = require('../Models/Generation.models');
 const Project = require('../Models/Project.model');
+const generationJob = require('../jobs/processGeneration.job');
 const { AppError } = require('../middleware/error.middleware');
 const { validatePrompt, calculateCredits, getRecommendedService } = require('../utils/Ai.utils');
 const { deductUserCredit } = require('../services/credit.service');
@@ -11,7 +12,10 @@ const resolveCreditsForType = (type, metadata = {}) => {
     return calculateCredits('textToVideo', { duration: metadata.duration || 'short' });
   }
   if (type === 'text-to-image' || type === 'image-to-image') {
-    return calculateCredits('textToImage', { provider: metadata.provider || 'replicate' });
+    const base = calculateCredits('textToImage', { provider: metadata.provider || 'replicate' });
+    const size = metadata.size || 'medium';
+    const multiplier = size === 'small' ? 1 : size === 'large' ? 2 : 1.5;
+    return Math.ceil(base * multiplier);
   }
   return 1;
 };
@@ -43,14 +47,19 @@ const createGeneration = asyncHandler(async (req, res, next) => {
     }
   }
 
-  const creditCost = resolveCreditsForType(type, { duration, provider: metadata.provider });
-  await deductUserCredit(userId, creditCost);
+  const creditCost = resolveCreditsForType(type, { duration, provider: metadata.provider, size: metadata.size });
+  try {
+    await deductUserCredit(userId, creditCost);
+  } catch (error) {
+    return next(new AppError(error.message || 'Insufficient credits', 402));
+  }
 
   const generation = await Generation.create({
     user: userId,
     type,
     prompt,
     inputImage,
+    output: null,
     modelUsed: modelUsed || getRecommendedService(type === 'text-to-video' ? 'textToVideo' : 'textToImage'),
     creditUsed: creditCost,
     metadata: {
@@ -59,6 +68,11 @@ const createGeneration = asyncHandler(async (req, res, next) => {
       settings,
       projectId,
     },
+  });
+
+  // Trigger one quick processing pass so user/admin dashboards update faster.
+  setImmediate(() => {
+    generationJob.runOnce().catch(() => {});
   });
 
   res.status(201).json({

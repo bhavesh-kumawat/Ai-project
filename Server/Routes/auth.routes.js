@@ -4,6 +4,7 @@ const { authLimiter } = require("../middleware/rateLimit.middleware");
 const { login, forgotPassword } = require("../Controllers/auth.Controller");
 const User = require("../Models/User.models");
 const verifyAdmin = require("../middleware/verifyAdmin");
+const { refreshAccessToken, logoutAll, authenticate } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
@@ -72,5 +73,7 @@ router.post("/register/admin", adminLimiter, authLimiter, verifyAdmin, async (re
 });
 
 router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/refresh", refreshAccessToken);
+router.post("/logout-all", authenticate, logoutAll);
 
 module.exports = router;

@@ -32,7 +32,17 @@ const deleteFromCloudinary = async (publicId) => {
   }
 };
 
+// Upload a remote URL directly to Cloudinary
+const uploadUrlToCloudinary = async (fileUrl, folder = 'uploads', resourceType = 'auto') => {
+  const result = await cloudinary.uploader.upload(fileUrl, {
+    folder,
+    resource_type: resourceType,
+  });
+  return result;
+};
+
 module.exports = {
   uploadToCloudinary,
+  uploadUrlToCloudinary,
   deleteFromCloudinary
 };
