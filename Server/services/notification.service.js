@@ -16,8 +16,10 @@ const logger = require('../utils/logger.utils');
 
 class NotificationService {
     constructor() {
+        this.isConfigured = Boolean(env.smtp.host && env.smtp.user && env.smtp.pass);
+
         // Initialize Transporter safely
-        if (env.smtp.user && env.smtp.pass) {
+        if (this.isConfigured) {
             this.transporter = nodemailer.createTransport({
                 host: env.smtp.host,
                 port: env.smtp.port,
@@ -49,6 +51,10 @@ class NotificationService {
                 }
             };
         }
+    }
+
+    isEmailConfigured() {
+        return this.isConfigured;
     }
 
     /**

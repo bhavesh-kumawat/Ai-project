@@ -1,7 +1,6 @@
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { authLimiter } = require("../middleware/rateLimit.middleware");
-const { login, forgotPassword } = require("../Controllers/auth.Controller");
 const User = require("../Models/User.models");
 const verifyAdmin = require("../middleware/verifyAdmin");
 const { refreshAccessToken, logoutAll, authenticate } = require("../middleware/auth.middleware");
@@ -20,7 +19,7 @@ const adminLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post("/login", authLimiter, login);
+router.post("/login", authLimiter, authController.login);
 
 // Public route - always creates role "user"
 router.post("/register", authLimiter, async (req, res) => {
@@ -76,14 +75,13 @@ router.post("/register/admin", adminLimiter, authLimiter, verifyAdmin, async (re
   }
 });
 
-router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/forgot-password", authLimiter, authController.forgotPassword);
 router.post("/refresh", refreshAccessToken);
 router.get("/me", authenticate, authController.getMe);
 router.patch("/me", authenticate, authController.updateMe);
 router.post("/logout-all", authenticate, logoutAll);
-router.post("/reset-password/:token", authController.resetPassword);
-router.post("/forgot-password", authController.forgotPassword);
-router.post("/verify-otp", authController.verifyOTP);
+router.post("/reset-password/:token", authLimiter, authController.resetPassword);
+router.post("/verify-otp", authLimiter, authController.verifyOTP);
 
 // Google OAuth
 router.get("/google", (req, res, next) => {

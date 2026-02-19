@@ -1026,17 +1026,32 @@ export default function UserHome() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get("payment");
-    if (paymentStatus === "success") {
-      // Refresh stats and show success
+    const sessionId = params.get("session_id");
+
+    if (paymentStatus === "success" && sessionId) {
+      const finalizePayment = async () => {
+        try {
+          await api.post("/stripe/confirm-checkout-session", { sessionId });
+          await fetchStats();
+          await fetchTransactions();
+          toast.success("Payment successful! Your credits have been updated.", { id: "active-toast" });
+        } catch (error) {
+          toast.error("Payment succeeded but credit sync is pending. Please refresh in a moment.", { id: "active-toast" });
+        } finally {
+          window.history.replaceState({}, document.title, "/dashboard");
+        }
+      };
+
+      finalizePayment();
+    } else if (paymentStatus === "success") {
       fetchStats();
-      toast.success("Payment successful! Your credits have been updated.", { id: "active-toast" });
-      // Clean up URL
+      toast.success("Payment successful! Your credits are being updated.", { id: "active-toast" });
       window.history.replaceState({}, document.title, "/dashboard");
     } else if (paymentStatus === "cancel") {
       toast.error("Payment cancelled.", { id: "active-toast" });
       window.history.replaceState({}, document.title, "/dashboard");
     }
-  }, [fetchStats]);
+  }, [fetchStats, fetchTransactions]);
 
   const handleGenerationCreated = async (generation) => {
     if (generation?._id) {

@@ -5,6 +5,8 @@ const authConfig = require('../config/auth.config');
 const notificationService = require('../services/notification.service');
 const crypto = require('crypto');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 exports.login = async (req, res, next) => {
   try {
     const { identifier, password, rememberMe } = req.body;
@@ -48,6 +50,14 @@ exports.forgotPassword = async (req, res, next) => {
     if (!email) return next(new AppError('Please provide email', 400));
 
     const normalizedEmail = email.toLowerCase().trim();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return next(new AppError('Please provide a valid email address', 400));
+    }
+
+    if (!notificationService.isEmailConfigured()) {
+      return next(new AppError('Email service is not configured. Please set SMTP credentials in Server/.env', 500));
+    }
+
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) return next(new AppError('User not found', 404));
 
@@ -56,20 +66,11 @@ exports.forgotPassword = async (req, res, next) => {
     user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
     await user.save({ validateBeforeSave: false });
 
-    // Log to console for development visibility
-    console.log('-------------------------------------------');
-    console.log('🔢 OTP FOR PASSWORD RESET');
-    console.log(`User: ${user.email}`);
-    console.log(`OTP: ${otp}`);
-    console.log('-------------------------------------------');
-
-    // Send Real Email
-    try {
-      await notificationService.sendEmail({
-        to: user.email,
-        subject: 'Your Password Reset OTP - Skull Bot',
-        text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
-        html: `
+    await notificationService.sendEmail({
+      to: user.email,
+      subject: 'Your Password Reset OTP - Skull Bot',
+      text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 10px; background-color: #050816; color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 30px;">
                         <h1 style="color: #a78bfa; margin: 0;">Skull Bot</h1>
@@ -87,12 +88,9 @@ exports.forgotPassword = async (req, res, next) => {
                     </div>
                 </div>
             `
-      });
-    } catch (emailError) {
-      console.error('❌ Email delivery failed. Is SMTP configured in .env?');
-    }
+    });
 
-    res.status(200).json({ status: 'success', message: 'OTP sent! If not in inbox, check server console.' });
+    res.status(200).json({ status: 'success', message: 'OTP sent successfully to your email.' });
   } catch (err) { next(err); }
 };
 
@@ -102,8 +100,13 @@ exports.verifyOTP = async (req, res, next) => {
     if (!email || !otp) return next(new AppError('Provide email and OTP', 400));
 
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail, otp, otpExpires: { $gt: Date.now() } });
-    if (!user) return next(new AppError('Invalid or expired OTP', 400));
+    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpires');
+    if (!user) return next(new AppError('User not found', 404));
+
+    const normalizedOtp = String(otp).trim();
+    if (!user.otp || !user.otpExpires || String(user.otp) !== normalizedOtp || user.otpExpires <= Date.now()) {
+      return next(new AppError('Invalid or expired OTP', 400));
+    }
 
     const { plainToken, hashedToken } = authService.createPasswordResetToken();
     user.passwordResetToken = hashedToken;
@@ -118,6 +121,10 @@ exports.verifyOTP = async (req, res, next) => {
 
 exports.resetPassword = async (req, res, next) => {
   try {
+    if (!req.body.password || String(req.body.password).length < 4) {
+      return next(new AppError('Password must be at least 4 characters', 400));
+    }
+
     const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
     const user = await User.findOne({ passwordResetToken: hashedToken, passwordResetExpires: { $gt: Date.now() } }).select('+password');
 

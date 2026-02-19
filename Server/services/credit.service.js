@@ -264,7 +264,7 @@ async function refundUserCredit(userId, amount) {
 async function updateUserPlan(userId, planDetails) {
   const credit = await getClientCredit(userId);
 
-  const { plan, dailyLimit, monthlyLimit, isUnlimited, subscriptionExpiresAt, subscriptionStatus, stripeSubscriptionId, stripeCustomerId, balance_increment } = planDetails;
+  const { plan, dailyLimit, monthlyLimit, isUnlimited, subscriptionExpiresAt, subscriptionStatus, stripeSubscriptionId, stripeCustomerId, balance_increment, transactionMetadata = {} } = planDetails;
 
   if (plan) credit.plan = plan;
   if (dailyLimit !== undefined) credit.dailyLimit = dailyLimit;
@@ -274,8 +274,9 @@ async function updateUserPlan(userId, planDetails) {
   if (subscriptionStatus) credit.subscriptionStatus = subscriptionStatus;
 
   // Handle balance increment (for one-time purchases via Stripe)
-  if (balance_increment) {
-    credit.balance += balance_increment;
+  const creditIncrement = Number(balance_increment) || 0;
+  if (creditIncrement > 0) {
+    credit.balance += creditIncrement;
   }
 
   // Map to correct model fields
@@ -289,8 +290,14 @@ async function updateUserPlan(userId, planDetails) {
   credit.lastDailyReset = new Date();
 
   await credit.save();
-  if (balance_increment) {
-    await logTransaction(userId, "payment", balance_increment, `Plan Upgrade: ${plan || "New Plan"}`, { plan, balance_increment });
+  if (creditIncrement > 0) {
+    await logTransaction(
+      userId,
+      "payment",
+      creditIncrement,
+      `Plan Upgrade: ${plan || "New Plan"}`,
+      { plan, balance_increment: creditIncrement, ...transactionMetadata }
+    );
   }
   return credit;
 }
