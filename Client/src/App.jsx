@@ -9,13 +9,23 @@ import PrivacyPolicy from "./Pages/PrivacyPolicy.page";
 import CookiePolicy from "./Pages/CookiePolicy.page";
 import RequireAuth from "./utils/RequireAuth";
 import ProtectedRoute from "./Pages/ProtectedRoute.comonent";
+import ResetPassword from "./Pages/ResetPassword.page";
+import ForgotPassword from "./Pages/ForgotPassword.page";
 
 const App = () => {
   return (
     <div className="bg-black min-h-screen">
       <Toaster
-        position="bottom-right"
+        position="top-center"
+        reverseOrder={false}
+        gutter={8}
+        containerStyle={{
+          top: 40,
+        }}
+        containerClassName=""
         toastOptions={{
+          // Only show one toast at a time
+          duration: 3000,
           style: {
             background: "#1e293b",
             color: "#fff",
@@ -38,6 +48,9 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
           <Route
             path="/register"
             element={

@@ -11,7 +11,10 @@ function LoginUI({
   setIdentifier,
   password,
   setPassword,
+  rememberMe,
+  setRememberMe,
   handleSubmit,
+  handleForgotPassword,
   loading,
 }) {
   return (
@@ -251,13 +254,20 @@ function LoginUI({
                   gap: 8,
                   fontSize: 12,
                   color: "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
                 }}
               >
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ cursor: "pointer" }}
+                />
                 Remember me
               </label>
 
               <span
+                onClick={handleForgotPassword}
                 style={{
                   fontSize: 12,
                   color: "rgba(34,211,238,0.65)",

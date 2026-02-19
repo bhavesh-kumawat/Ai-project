@@ -2,39 +2,48 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../Models/User.models");
 
-passport.use(
-    new GoogleStrategy(
-        {
-            clientID: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: process.env.GOOGLE_CALLBACK_URL,
-        },
-        async (accessToken, refreshToken, profile, done) => {
-            try {
-                let user = await User.findOne({ googleId: profile.id });
+const config = require("./env.config");
 
-                if (!user) {
-                    // Check if user with same email exists
-                    user = await User.findOne({ email: profile.emails[0].value });
-                    if (user) {
-                        user.googleId = profile.id;
-                        await user.save();
-                    } else {
-                        user = await User.create({
-                            username: profile.displayName.replace(/\s+/g, "_").toLowerCase(),
-                            email: profile.emails[0].value,
-                            googleId: profile.id,
-                            status: "active",
-                        });
+const googleConfig = {
+    clientID: config.google.clientId,
+    clientSecret: config.google.clientSecret,
+    callbackURL: config.google.callbackURL || "/api/auth/google/callback",
+};
+
+if (googleConfig.clientID && googleConfig.clientSecret) {
+    passport.use(
+        new GoogleStrategy(
+            googleConfig,
+            async (accessToken, refreshToken, profile, done) => {
+                try {
+                    let user = await User.findOne({ googleId: profile.id });
+
+                    if (!user) {
+                        // Check if user with same email exists
+                        user = await User.findOne({ email: profile.emails[0].value });
+                        if (user) {
+                            user.googleId = profile.id;
+                            await user.save();
+                        } else {
+                            user = await User.create({
+                                username: profile.displayName.replace(/\s+/g, "_").toLowerCase(),
+                                email: profile.emails[0].value,
+                                googleId: profile.id,
+                                status: "active",
+                            });
+                        }
                     }
+                    return done(null, user);
+                } catch (err) {
+                    return done(err, null);
                 }
-                return done(null, user);
-            } catch (err) {
-                return done(err, null);
             }
-        }
-    )
-);
+        )
+    );
+    console.log("✅ Google OAuth Strategy registered");
+} else {
+    console.warn("⚠️  Google OAuth credentials not configured. Google login will be disabled.");
+}
 
 passport.serializeUser((user, done) => {
     done(null, user.id);

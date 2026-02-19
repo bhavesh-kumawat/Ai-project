@@ -308,14 +308,14 @@ export default function AdminDashboard() {
     try {
       if (target.status === "suspended") {
         await unbanAdminUser(target.id);
-        toast.success("User unbanned");
+        toast.success("User unbanned", { id: "active-toast" });
       } else {
         await banAdminUser(target.id);
-        toast.success("User banned");
+        toast.success("User banned", { id: "active-toast" });
       }
       await fetchAdminLive();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Action failed");
+      toast.error(e?.response?.data?.message || "Action failed", { id: "active-toast" });
     }
   };
 
@@ -323,10 +323,10 @@ export default function AdminDashboard() {
     if (!window.confirm(`Delete user ${target.name}?`)) return;
     try {
       await deleteAdminUser(target.id);
-      toast.success("User deleted");
+      toast.success("User deleted", { id: "active-toast" });
       await fetchAdminLive();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Delete failed");
+      toast.error(e?.response?.data?.message || "Delete failed", { id: "active-toast" });
     }
   };
 
@@ -335,20 +335,20 @@ export default function AdminDashboard() {
     if (!window.confirm("Delete this generation?")) return;
     try {
       await deleteAdminGeneration(generationId);
-      toast.success("Generation deleted");
+      toast.success("Generation deleted", { id: "active-toast" });
       await fetchAdminLive();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Delete failed");
+      toast.error(e?.response?.data?.message || "Delete failed", { id: "active-toast" });
     }
   };
 
   const handleModerate = async (id, status) => {
     try {
       await moderateAdminGeneration(id, status);
-      toast.success(`Generation ${status}`);
+      toast.success(`Generation ${status}`, { id: "active-toast" });
       await fetchAdminLive();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Moderation failed");
+      toast.error(e?.response?.data?.message || "Moderation failed", { id: "active-toast" });
     }
   };
 
@@ -358,10 +358,10 @@ export default function AdminDashboard() {
       const newValue = window.prompt(`Update ${key}:`, value);
       if (newValue === null) return;
       await updateAdminConfig({ key, value: newValue });
-      toast.success("Config updated");
+      toast.success("Config updated", { id: "active-toast" });
       await fetchAdminLive();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Update failed");
+      toast.error(e?.response?.data?.message || "Update failed", { id: "active-toast" });
     }
   };
 

@@ -8,6 +8,7 @@ import BackButton from "../components/BackButton";
 function Login() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -15,30 +16,35 @@ function Login() {
 
   // 🔐 Handle Login
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     if (!identifier || !password) {
-      toast.error("Please fill all fields");
-      return;
+      return toast.error("Please fill all fields", { id: "active-toast" });
     }
 
     try {
       setLoading(true);
 
-      const data = await loginUser(identifier, password);
+      const normalizedIdentifier = identifier.toLowerCase().trim();
+      const data = await loginUser(normalizedIdentifier, password, rememberMe);
 
       // Store token
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      toast.success("Login successful");
+      toast.success("Login successful", { id: "active-toast" });
       setSuccess(true);
 
     } catch (error) {
-      toast.error(error.message || "Login failed");
+      toast.error(error.message || "Login failed", { id: "active-toast" });
     } finally {
       setLoading(false);
     }
+  };
+
+  // 🔑 Handle Forgot Password
+  const handleForgotPassword = () => {
+    navigate("/forgot-password");
   };
 
   // 🔁 Redirect After Success Animation
@@ -64,9 +70,12 @@ function Login() {
       <LoginUI
         identifier={identifier}
         password={password}
+        rememberMe={rememberMe}
         setIdentifier={setIdentifier}
         setPassword={setPassword}
+        setRememberMe={setRememberMe}
         handleSubmit={handleLogin}
+        handleForgotPassword={handleForgotPassword}
         loading={loading}
         success={success}
       />

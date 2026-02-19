@@ -103,12 +103,12 @@ function Register() {
       };
 
       await api.post(endpoint, payload);
-      toast.success("Registration successful! Redirecting to login...");
+      toast.success("Registration successful! Redirecting to login...", { id: "active-toast" });
       setSuccess(true);
     } catch (err) {
       const msg = err.response?.data?.message || "Something went wrong";
       setErrors({ general: msg });
-      toast.error(msg);
+      toast.error(msg, { id: "active-toast" });
     } finally {
       setLoading(false);
     }

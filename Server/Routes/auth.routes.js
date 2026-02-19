@@ -8,6 +8,7 @@ const { refreshAccessToken, logoutAll, authenticate } = require("../middleware/a
 const authController = require("../Controllers/auth.Controller");
 const passport = require("passport");
 const { generateToken } = require("../config/auth.config");
+const config = require("../config/env.config");
 
 const router = express.Router();
 
@@ -80,19 +81,42 @@ router.post("/refresh", refreshAccessToken);
 router.get("/me", authenticate, authController.getMe);
 router.patch("/me", authenticate, authController.updateMe);
 router.post("/logout-all", authenticate, logoutAll);
+router.post("/reset-password/:token", authController.resetPassword);
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/verify-otp", authController.verifyOTP);
 
 // Google OAuth
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));
+router.get("/google", (req, res, next) => {
+  if (!config.google.clientId || !config.google.clientSecret) {
+    return res.status(501).json({
+      success: false,
+      message: "Google OAuth is not configured on this server."
+    });
+  }
+  passport.authenticate("google", { scope: ["profile", "email"], session: false })(req, res, next);
+});
 
-router.get("/google/callback", passport.authenticate("google", { failureRedirect: "/login", session: false }), (req, res) => {
-  const { accessToken, refreshToken } = generateToken(req.user);
+router.get("/google/callback", (req, res, next) => {
+  if (!config.google.clientId || !config.google.clientSecret) {
+    return res.status(501).json({
+      success: false,
+      message: "Google OAuth is not configured on this server."
+    });
+  }
+  passport.authenticate("google", { failureRedirect: "/login", session: false }, (err, user) => {
+    if (err || !user) {
+      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=oauth_failed`);
+    }
 
-  // Set tokens in cookies or redirect with tokens in URL (cookies are safer)
-  res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
-  res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    const { accessToken, refreshToken } = generateToken(user);
 
-  // Redirect to frontend dashboard
-  res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/dashboard`);
+    // Set tokens in cookies
+    res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+
+    // Redirect to frontend dashboard
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/dashboard`);
+  })(req, res, next);
 });
 
 module.exports = router;

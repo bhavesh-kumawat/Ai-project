@@ -14,6 +14,8 @@ const UserSchema = mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
       match: [/^\S+@\S+.\S+$/, 'Please provide a valid email'],
     },
     password: {
@@ -41,6 +43,22 @@ const UserSchema = mongoose.Schema(
       enum: ["active", "suspended", "deleted"],
       default: "active",
       index: true,
+    },
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+    otp: {
+      type: String,
+      select: false,
+    },
+    otpExpires: {
+      type: Date,
+      select: false,
     },
   },
   { timestamps: true }

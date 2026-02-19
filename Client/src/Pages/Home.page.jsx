@@ -1085,7 +1085,7 @@ function Home() {
                 stunning, cinematic content with just a few lines of text.
               </p>
               <p>
-                Today, AnimateX is used by over 500,000 creators worldwide—from
+                Today, Skull bot is used by over 500,000 creators worldwide—from
                 independent YouTubers and TikTokers to major film studios and
                 advertising agencies. We are constantly pushing the boundaries
                 of what's possible, and we're just getting started.
@@ -1137,7 +1137,7 @@ function Home() {
                 <h3 className="text-violet-400 font-bold mb-2 uppercase tracking-widest text-xs">
                   Email Us
                 </h3>
-                <p className="text-2xl font-bold">hello@animatex.ai</p>
+                <p className="text-2xl font-bold">hello@skull.ai</p>
               </div>
               <div>
                 <h3 className="text-violet-400 font-bold mb-2 uppercase tracking-widest text-xs">
@@ -1221,7 +1221,7 @@ function Home() {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-sm font-black">
                   ✦
                 </div>
-                <span className="font-black text-lg">AnimateX</span>
+                <span className="font-black text-lg">Skull bot</span>
               </div>
               <p className="text-white/40 text-sm leading-relaxed max-w-xs">
                 Create stunning AI-powered videos and animations. Bringing your
@@ -1262,7 +1262,7 @@ function Home() {
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-white/30 text-sm">
-              © 2026 AnimateX. All rights reserved.
+              © 2026 skull bot. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               {["Twitter", "GitHub", "Discord", "YouTube"].map((s) => (

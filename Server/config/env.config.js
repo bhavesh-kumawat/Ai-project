@@ -17,6 +17,18 @@ const envSchema = Joi.object({
     RAZORPAY_KEY_ID: Joi.string().optional().allow(''),
     RAZORPAY_KEY_SECRET: Joi.string().optional().allow(''),
 
+    // Google OAuth
+    GOOGLE_CLIENT_ID: Joi.string().optional().allow(''),
+    GOOGLE_CLIENT_SECRET: Joi.string().optional().allow(''),
+    GOOGLE_CALLBACK_URL: Joi.string().optional().allow(''),
+
+    // SMTP
+    SMTP_HOST: Joi.string().optional().allow(''),
+    SMTP_PORT: Joi.number().optional().default(587),
+    SMTP_USER: Joi.string().optional().allow(''),
+    SMTP_PASS: Joi.string().optional().allow(''),
+    SMTP_FROM: Joi.string().optional().allow(''),
+
 }).unknown();
 
 const { value: envVars, error } = envSchema.prefs({ errors: { label: 'key' } }).validate(process.env);
@@ -40,5 +52,17 @@ module.exports = {
     razorpay: {
         keyId: envVars.RAZORPAY_KEY_ID,
         keySecret: envVars.RAZORPAY_KEY_SECRET,
+    },
+    google: {
+        clientId: envVars.GOOGLE_CLIENT_ID,
+        clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+        callbackURL: envVars.GOOGLE_CALLBACK_URL,
+    },
+    smtp: {
+        host: envVars.SMTP_HOST,
+        port: envVars.SMTP_PORT,
+        user: envVars.SMTP_USER,
+        pass: envVars.SMTP_PASS,
+        from: envVars.SMTP_FROM,
     }
 };

@@ -190,7 +190,7 @@ function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video", 
 
   const uploadFile = async (file) => {
     if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file.");
+      return toast.error("Please upload an image file.", { id: "active-toast" });
       return;
     }
 
@@ -204,9 +204,9 @@ function PromptBox({ onGenerated, selectedEffect = null, defaultMode = "video", 
       });
       setInputImage(res.data.data.url);
       setMode(mode === "video" ? "image-to-video" : "image-to-image");
-      toast.success("Image uploaded!");
+      toast.success("Image uploaded!", { id: "active-toast" });
     } catch (err) {
-      toast.error("Upload failed.");
+      toast.error("Upload failed.", { id: "active-toast" });
     } finally {
       setUploading(false);
     }
@@ -625,7 +625,7 @@ function BillingView({ user, stats, transactions = [], fetchHistory }) {
         window.location.href = response.data.url;
       }
     } catch (err) {
-      toast.error("Failed to initiate checkout. Please try again.");
+      toast.error("Failed to initiate checkout. Please try again.", { id: "active-toast" });
     } finally {
       setLoading(null);
     }
@@ -813,9 +813,9 @@ function SettingsView({ user, onUpdate }) {
       localStorage.setItem("user", JSON.stringify(updatedUser));
       onUpdate(updatedUser);
       // Custom toast-like notification would be better here
-      toast.success("Settings updated successfully!");
+      toast.success("Settings updated successfully!", { id: "active-toast" });
     } catch (err) {
-      toast.error("Failed to update settings. Please try again.");
+      toast.error("Failed to update settings. Please try again.", { id: "active-toast" });
     } finally {
       setLoading(false);
     }
@@ -1029,11 +1029,11 @@ export default function UserHome() {
     if (paymentStatus === "success") {
       // Refresh stats and show success
       fetchStats();
-      toast.success("Payment successful! Your credits have been updated.");
+      toast.success("Payment successful! Your credits have been updated.", { id: "active-toast" });
       // Clean up URL
       window.history.replaceState({}, document.title, "/dashboard");
     } else if (paymentStatus === "cancel") {
-      toast.error("Payment cancelled.");
+      toast.error("Payment cancelled.", { id: "active-toast" });
       window.history.replaceState({}, document.title, "/dashboard");
     }
   }, [fetchStats]);
@@ -1064,8 +1064,7 @@ export default function UserHome() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file.");
-      return;
+      return toast.error("Please upload an image file.", { id: "active-toast" });
     }
 
     setLibUploading(true);
@@ -1086,10 +1085,10 @@ export default function UserHome() {
         creditUsed: 0
       });
 
-      toast.success("Image added to library!");
+      toast.success("Image added to library!", { id: "active-toast" });
       fetchGenerations();
     } catch (err) {
-      toast.error("Upload failed.");
+      toast.error("Upload failed.", { id: "active-toast" });
     } finally {
       setLibUploading(false);
     }
@@ -1115,10 +1114,7 @@ export default function UserHome() {
     const file = e.dataTransfer.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file.");
-      return;
-    }
+    return toast.error("Please upload an image file.", { id: "active-toast" });
 
     if (tab === "Library") {
       const syntheticEvent = { target: { files: [file] } };
@@ -1134,9 +1130,9 @@ export default function UserHome() {
           headers: { "Content-Type": "multipart/form-data" },
         });
         setInputImage(res.data.data.url);
-        toast.success("Image attached!");
+        toast.success("Image attached!", { id: "active-toast" });
       } catch (err) {
-        toast.error("Upload failed.");
+        toast.error("Upload failed.", { id: "active-toast" });
       } finally {
         setGlobalUploading(false);
       }
