@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getAdminStats, getAdminUsers, getAdminGenerations, banAdminUser, unbanAdminUser, deleteAdminUser, deleteAdminGeneration } from "../Service/admin.service";
+import { getAdminStats, getAdminUsers, getAdminGenerations, banAdminUser, unbanAdminUser, deleteAdminUser, deleteAdminGeneration, getAdminConfigs, updateAdminConfig, getAdminModeration, moderateAdminGeneration } from "../Service/admin.service";
 import BackButton from "../components/BackButton";
 const _MOTION = motion;
 
@@ -78,6 +78,27 @@ const MOD_QUEUE = [
 
 const WEEK = [
   { d: "Mon", v: 42 }, { d: "Tue", v: 68 }, { d: "Wed", v: 55 }, { d: "Thu", v: 89 }, { d: "Fri", v: 73 }, { d: "Sat", v: 38 }, { d: "Sun", v: 51 },
+];
+
+const DEFAULT_CONFIGS = [
+  { key: "site_name", value: "Nexus AI", category: "platform" },
+  { key: "maintenance_mode", value: false, category: "platform" },
+  { key: "api_version", value: "v2.1.0", category: "platform" },
+  { key: "primary_theme_color", value: "#dc2626", category: "platform" },
+  { key: "default_video_quality", value: "1080p", category: "generation" },
+  { key: "max_video_duration", value: 30, category: "generation" },
+  { key: "credit_cost_per_sec", value: 2, category: "generation" },
+  { key: "allowed_formats", value: ["mp4", "webm"], category: "generation" },
+  { key: "currency", value: "USD", category: "billing" },
+  { key: "starter_plan_credits", value: 100, category: "billing" },
+  { key: "pro_plan_credits", value: 500, category: "billing" },
+  { key: "tax_rate", value: 0.15, category: "billing" },
+  { key: "admin_2fa_enabled", value: false, category: "security" },
+  { key: "session_expiry_hours", value: 24, category: "security" },
+  { key: "max_login_retries", value: 5, category: "security" },
+  { key: "support_email", value: "support@nexusai.com", category: "email" },
+  { key: "smtp_server", value: "smtp.nexusai.com", category: "email" },
+  { key: "newsletter_enabled", value: true, category: "email" },
 ];
 
 const formatTimeAgo = (value) => {
@@ -198,6 +219,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminGenerations, setAdminGenerations] = useState([]);
+  const [configs, setConfigs] = useState(DEFAULT_CONFIGS);
+  const [modQueueReal, setModQueueReal] = useState([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [liveTick, setLiveTick] = useState(0);
 
@@ -208,17 +231,34 @@ export default function AdminDashboard() {
 
   const fetchAdminLive = useCallback(async () => {
     try {
-      const [statsRes, usersRes, generationsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         getAdminStats(),
         getAdminUsers({ q: searchQuery, limit: 20 }),
         getAdminGenerations({ limit: 25 }),
+        getAdminConfigs(),
+        getAdminModeration({ limit: 20 }),
       ]);
-      setStats(statsRes?.data || null);
-      setAdminUsers(usersRes?.data || []);
-      setAdminGenerations(generationsRes?.data || []);
+
+      const [statsRes, usersRes, genRes, configRes, modRes] = results;
+
+      if (statsRes.status === "fulfilled") setStats(statsRes.value?.data || null);
+      if (usersRes.status === "fulfilled") setAdminUsers(usersRes.value?.data || []);
+      if (genRes.status === "fulfilled") setAdminGenerations(genRes.value?.data || []);
+      if (configRes.status === "fulfilled" && configRes.value?.data?.length > 0) {
+        setConfigs(configRes.value.data);
+      }
+      if (modRes.status === "fulfilled") setModQueueReal(modRes.value?.data || []);
+
       setLastUpdatedAt(new Date().toISOString());
-    } catch {
-      // keep UI usable on failed live fetch
+
+      // Log any failures for debugging
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(`Admin fetch error [${i}]:`, r.reason);
+        }
+      });
+    } catch (err) {
+      console.error("Admin Dashboard overall fetch error:", err);
     }
   }, [searchQuery]);
 
@@ -302,6 +342,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleModerate = async (id, status) => {
+    try {
+      await moderateAdminGeneration(id, status);
+      toast.success(`Generation ${status}`);
+      await fetchAdminLive();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Moderation failed");
+    }
+  };
+
+  const handleUpdateConfig = async (key, value) => {
+    try {
+      // In a real app, you'd open a prompt or modal. For now, we'll use a prompt.
+      const newValue = window.prompt(`Update ${key}:`, value);
+      if (newValue === null) return;
+      await updateAdminConfig({ key, value: newValue });
+      toast.success("Config updated");
+      await fetchAdminLive();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Update failed");
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#050816", fontFamily: "'DM Sans',sans-serif" }}>
       <style>{`
@@ -314,7 +377,7 @@ export default function AdminDashboard() {
       `}</style>
 
       <Blobs /><SpaceCanvas />
-      <BackButton />
+      <BackButton style={{ top: '80px' }} />
       <Navbar user={user} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={logout} live={isLive} />
 
       <div style={{ position: "relative", zIndex: 1, paddingTop: 58 }}>
@@ -592,7 +655,7 @@ export default function AdminDashboard() {
                   {modQueue.length > 0 && <Badge label={`${modQueue.length} pending`} color="#f87171" bg="rgba(248,113,113,0.15)" />}
                 </motion.div>
 
-                {modQueue.length === 0 ? (
+                {modQueueReal.length === 0 ? (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: "center", padding: "60px 0" }}>
                     <div style={{ fontSize: 52, marginBottom: 14 }}>✅</div>
                     <p style={{ color: "#fff", fontSize: 18, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 6 }}>Queue is clear!</p>
@@ -600,27 +663,27 @@ export default function AdminDashboard() {
                   </motion.div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {modQueue.map((item, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16, height: 0 }} transition={{ delay: i * 0.07 }}
+                    {modQueueReal.map((item, i) => (
+                      <motion.div key={item._id || i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16, height: 0 }} transition={{ delay: i * 0.07 }}
                         layout style={{ display: "flex", gap: 16, padding: "18px 20px", background: "rgba(248,113,113,0.05)", backdropFilter: "blur(14px)", border: "1px solid rgba(248,113,113,0.15)", borderRadius: 16, alignItems: "center" }}>
-                        <div style={{ width: 80, height: 54, borderRadius: 10, background: item.bg, flexShrink: 0 }} />
+                        <div style={{ width: 80, height: 54, borderRadius: 10, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5 }}>
-                            <span style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>@{item.user}</span>
-                            <Badge label={`⚠ ${item.reason}`} color="#f87171" bg="rgba(248,113,113,0.15)" />
-                            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}>{item.time}</span>
+                            <span style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>@{item.user?.username || item.user?.email || "user"}</span>
+                            <Badge label={`⚠ flagged`} color="#f87171" bg="rgba(248,113,113,0.15)" />
+                            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 11 }}>{formatTimeAgo(item.updatedAt)}</span>
                           </div>
                           <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>&quot;{item.prompt}&quot;</p>
                         </div>
                         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                          <button onClick={() => removeFromQueue(i)} style={{ padding: "7px 16px", borderRadius: 9, border: "1px solid rgba(52,211,153,0.3)", background: "rgba(52,211,153,0.1)", color: "#34d399", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
+                          <button onClick={() => handleModerate(item._id, "approved")} style={{ padding: "7px 16px", borderRadius: 9, border: "1px solid rgba(52,211,153,0.3)", background: "rgba(52,211,153,0.1)", color: "#34d399", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
                             onMouseEnter={e => e.currentTarget.style.background = "rgba(52,211,153,0.2)"}
                             onMouseLeave={e => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
                           >✓ Approve</button>
-                          <button onClick={() => removeFromQueue(i)} style={{ padding: "7px 16px", borderRadius: 9, border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.1)", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
+                          <button onClick={() => handleModerate(item._id, "rejected")} style={{ padding: "7px 16px", borderRadius: 9, border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.1)", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
                             onMouseEnter={e => e.currentTarget.style.background = "rgba(248,113,113,0.2)"}
                             onMouseLeave={e => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
-                          >✕ Remove</button>
+                          >✕ Reject</button>
                         </div>
                       </motion.div>
                     ))}
@@ -638,31 +701,47 @@ export default function AdminDashboard() {
                   <h1 style={{ fontFamily: "'Syne',sans-serif", color: "#fff", fontSize: 26, fontWeight: 800 }}>Platform Settings</h1>
                   <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, marginTop: 4 }}>Configure and manage all platform-level settings</p>
                 </motion.div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  {[
-                    { title: "🎬 Generation", items: ["Default video quality", "Max duration limit", "Allowed styles", "Credit cost per second", "Queue priority rules", "Model version"] },
-                    { title: "🔐 Security", items: ["Rotate admin secret key", "Enable 2FA for admins", "IP allowlist", "Rate limiting config", "JWT expiry duration", "Session management"] },
-                    { title: "💰 Billing", items: ["Credit package pricing", "Subscription tiers", "Refund policy", "Invoice templates", "Payment gateway keys", "Trial settings"] },
-                    { title: "📧 Email", items: ["SMTP configuration", "Welcome email template", "Credit alert threshold", "Password reset template", "Weekly digest", "Notification rules"] },
-                    { title: "🌐 Platform", items: ["Site name & branding", "Maintenance mode", "Feature flags", "API rate limits", "Webhook endpoints", "CDN settings"] },
-                    { title: "🗑 Danger Zone", items: ["Purge all failed jobs", "Reset user credit balances", "Wipe moderation queue", "Revoke all sessions", "Factory reset platform", "Export all data"], danger: true },
-                  ].map((g, gi) => (
-                    <motion.div key={gi} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: gi * 0.06 }}
-                      style={{ padding: "20px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(14px)", border: `1px solid ${g.danger ? "rgba(248,113,113,0.22)" : "rgba(255,255,255,0.07)"}`, borderRadius: 16 }}>
-                      <p style={{ color: g.danger ? "#fca5a5" : "#fff", fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 12 }}>{g.title}</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                        {g.items.map((item, ii) => (
-                          <motion.button key={ii}
-                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", background: "rgba(255,255,255,0.04)", border: `1px solid ${g.danger ? "rgba(248,113,113,0.1)" : "rgba(255,255,255,0.06)"}`, borderRadius: 10, cursor: "pointer", transition: "all .18s", textAlign: "left" }}
-                            whileHover={{ x: 3, background: g.danger ? "rgba(248,113,113,0.08)" : "rgba(255,255,255,0.07)" }}
-                            whileTap={{ scale: 0.98 }}>
-                            <span style={{ color: g.danger ? "rgba(248,113,113,0.7)" : "rgba(255,255,255,0.55)", fontSize: 12 }}>{item}</span>
-                            <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>→</span>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  {["generation", "security", "billing", "email", "platform"].map((cat, ci) => {
+                    const catConfigs = configs.filter(c => c.category === cat);
+                    return (
+                      <motion.div key={ci} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.06 }}
+                        style={{ padding: "20px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
+                        <p style={{ color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 12, textTransform: "capitalize" }}>🎬 {cat} Settings</p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                          {catConfigs.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>No settings in this category.</p>}
+                          {catConfigs.map((c, ii) => (
+                            <motion.button key={c._id || ii}
+                              onClick={() => handleUpdateConfig(c.key, c.value)}
+                              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", transition: "all .18s", textAlign: "left" }}
+                              whileHover={{ x: 3, background: "rgba(255,255,255,0.07)" }}
+                              whileTap={{ scale: 0.98 }}>
+                              <div style={{ display: "flex", flexDirection: "column" }}>
+                                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600 }}>{c.key}</span>
+                                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>{JSON.stringify(c.value)}</span>
+                              </div>
+                              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>→</span>
+                            </motion.button>
+                          ))}
+                          <button onClick={() => {
+                            const key = window.prompt("Enter new config key:");
+                            if (key) handleUpdateConfig(key, "");
+                          }} style={{ padding: "8px", border: "1px dashed rgba(255,255,255,0.1)", background: "none", color: "rgba(255,255,255,0.3)", fontSize: 11, borderRadius: 8, cursor: "pointer", marginTop: 5 }}>+ Add New Key</button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                  <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
+                    style={{ padding: "20px", background: "rgba(248,113,113,0.05)", backdropFilter: "blur(14px)", border: "1px solid rgba(248,113,113,0.22)", borderRadius: 16 }}>
+                    <p style={{ color: "#fca5a5", fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif", marginBottom: 12 }}>🗑 Danger Zone</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      {["Purge all failed jobs", "Reset user credit balances", "Wipe moderation queue"].map((item, ii) => (
+                        <button key={ii} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.1)", borderRadius: 10, cursor: "not-allowed", textAlign: "left" }}>
+                          <span style={{ color: "rgba(248,113,113,0.7)", fontSize: 12 }}>{item}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
                 </div>
               </div>
             </motion.div>

@@ -1,4 +1,22 @@
 const Credit = require("../Models/Credit.models.js");
+const Transaction = require("../Models/Transaction.models.js");
+
+/**
+ * Internal helper to log transactions.
+ */
+async function logTransaction(userId, type, amount, description, metadata = {}) {
+  try {
+    await Transaction.create({
+      user: userId,
+      type,
+      amount,
+      description,
+      metadata,
+    });
+  } catch (err) {
+    console.error(`[Transaction] Failed to log ${type} for user ${userId}:`, err);
+  }
+}
 
 async function resetDailyCredits() {
   const today = new Date();
@@ -178,6 +196,7 @@ async function deductUserCredit(userId, amount = 1) {
   }
 
   await credit.save();
+  await logTransaction(userId, "consumed", -amount, `Generation: ${amount} credits used`, { amount });
   return credit;
 }
 
@@ -198,6 +217,7 @@ async function addUserCredits(userId, amount, isBonus = false) {
   }
 
   await credit.save();
+  await logTransaction(userId, isBonus ? "bonus" : "payment", amount, `${isBonus ? "Bonus" : "Credits"} added to balance`, { amount, isBonus });
   return credit;
 }
 
@@ -231,6 +251,7 @@ async function refundUserCredit(userId, amount) {
   }
 
   await credit.save();
+  await logTransaction(userId, "refund", amount, `Refund: ${amount} credits restored`, { amount });
   return credit;
 }
 
@@ -243,15 +264,7 @@ async function refundUserCredit(userId, amount) {
 async function updateUserPlan(userId, planDetails) {
   const credit = await getClientCredit(userId);
 
-  // Extract fields to update
-  // Note: Fixing typos from controller vs model. 
-  // Model: stripeSubscriptionId, stripeCustomerId
-  // Controller inputs potentially: stripSbscriptionId, stripCustomerId
-  // I will accept both or standardized inputs. Assuming caller passes standardized now?
-  // Or I stick to what the controller was parsing from body.
-  // Controller: {plan, dailyLimit, monthlyLimit, isUnlimited, subscriptionExpiresAt, subscriptionStatus, stripSbscriptionId, stripCustomerId} = req.body;
-
-  const { plan, dailyLimit, monthlyLimit, isUnlimited, subscriptionExpiresAt, subscriptionStatus, stripeSubscriptionId, stripeCustomerId, stripSbscriptionId, stripCustomerId } = planDetails;
+  const { plan, dailyLimit, monthlyLimit, isUnlimited, subscriptionExpiresAt, subscriptionStatus, stripeSubscriptionId, stripeCustomerId, balance_increment } = planDetails;
 
   if (plan) credit.plan = plan;
   if (dailyLimit !== undefined) credit.dailyLimit = dailyLimit;
@@ -260,12 +273,14 @@ async function updateUserPlan(userId, planDetails) {
   if (subscriptionExpiresAt) credit.subscriptionExpiresAt = subscriptionExpiresAt;
   if (subscriptionStatus) credit.subscriptionStatus = subscriptionStatus;
 
-  // Map potential typos to correct model fields
-  if (stripeSubscriptionId) credit.stripeSubscriptionId = stripeSubscriptionId;
-  else if (stripSbscriptionId) credit.stripeSubscriptionId = stripSbscriptionId;
+  // Handle balance increment (for one-time purchases via Stripe)
+  if (balance_increment) {
+    credit.balance += balance_increment;
+  }
 
+  // Map to correct model fields
+  if (stripeSubscriptionId) credit.stripeSubscriptionId = stripeSubscriptionId;
   if (stripeCustomerId) credit.stripeCustomerId = stripeCustomerId;
-  else if (stripCustomerId) credit.stripeCustomerId = stripCustomerId;
 
   //reset usage on plan change or upgrade
   credit.dailyUsed = 0;
@@ -274,6 +289,9 @@ async function updateUserPlan(userId, planDetails) {
   credit.lastDailyReset = new Date();
 
   await credit.save();
+  if (balance_increment) {
+    await logTransaction(userId, "payment", balance_increment, `Plan Upgrade: ${plan || "New Plan"}`, { plan, balance_increment });
+  }
   return credit;
 }
 

@@ -41,6 +41,7 @@ router.get('/stats', authenticate, creditController.getUserStats);
 router.post('/deduct', authenticate, validate(deductSchema), creditController.deductCredits);
 router.post('/add', authenticate, validate(addSchema), creditController.addCredits);
 router.put('/plan', authenticate, validate(updatePlanSchema), creditController.updatePlan);
+router.get('/transactions', authenticate, creditController.getTransactions);
 router.post('/cancel', authenticate, creditController.cancelSubscription);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import RegisterUI from "../components/registeruifile/RegisterUI.component";
 import api from "../utils/api";
 import BackButton from "../components/BackButton";
@@ -99,9 +100,12 @@ function Register() {
       };
 
       await api.post(endpoint, payload);
+      toast.success("Registration successful! Redirecting to login...");
       setSuccess(true);
     } catch (err) {
-      setErrors({ general: err.response?.data?.message || "Something went wrong" });
+      const msg = err.response?.data?.message || "Something went wrong";
+      setErrors({ general: msg });
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { configureApp, appSettings } = require('./config/app.config.js');
 const { initializeCloudinary, validateConfig } = require('./config/cloudinary.config.js');
@@ -9,6 +10,9 @@ const generationRoutes = require('./Routes/generation.routes.js');
 const videoRoutes = require('./Routes/video.routes.js');
 const projectRoutes = require('./Routes/project.routes.js');
 const adminRoutes = require('./Routes/admin.routes.js');
+const stripeRoutes = require('./Routes/stripe.routes.js');
+const stripeController = require('./Controllers/stripe.Controller.js');
+
 const databaseService = require('./services/database.service.js');
 const scheduler = require('./jobs/scheduler.js');
 const generationJob = require('./jobs/processGeneration.job.js');
@@ -18,7 +22,10 @@ const { globalErrorHandler } = require('./middleware/error.middleware.js');
 // Initialize Express App
 const app = express();
 
-// Configure App (Apply all middleware)
+// 1. Stripe Webhook (MUST be before express.json middleware in configureApp)
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeController.handleWebhook);
+
+// 2. Configure App (Apply all other middleware)
 configureApp(app);
 
 // Setup Routes (after middleware, before server start)
@@ -30,6 +37,8 @@ app.use("/api/generations", generationRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/stripe", stripeRoutes);
+
 
 // Global error handler must be last
 app.use(globalErrorHandler);

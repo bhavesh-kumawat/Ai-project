@@ -57,6 +57,11 @@ const GenerationSchema = mongoose.Schema(
       type: Object,
       default: {},
     },
+    moderationStatus: {
+      type: String,
+      enum: ["none", "flagged", "approved", "rejected"],
+      default: "none",
+    },
     error: {
       type: String,
       default: null,

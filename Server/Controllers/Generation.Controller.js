@@ -57,11 +57,12 @@ const createGeneration = asyncHandler(async (req, res, next) => {
   const generation = await Generation.create({
     user: userId,
     type,
-    prompt,
+    prompt: prompt || 'Uploaded Image',
     inputImage,
-    output: null,
+    output: req.body.output || null,
+    status: req.body.status || 'pending',
     modelUsed: modelUsed || getRecommendedService(type === 'text-to-video' ? 'textToVideo' : 'textToImage'),
-    creditUsed: creditCost,
+    creditUsed: req.body.creditUsed !== undefined ? req.body.creditUsed : creditCost,
     metadata: {
       ...metadata,
       duration,
@@ -72,7 +73,7 @@ const createGeneration = asyncHandler(async (req, res, next) => {
 
   // Trigger one quick processing pass so user/admin dashboards update faster.
   setImmediate(() => {
-    generationJob.runOnce().catch(() => {});
+    generationJob.runOnce().catch(() => { });
   });
 
   res.status(201).json({

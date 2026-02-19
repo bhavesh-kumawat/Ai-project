@@ -5,6 +5,7 @@ const Video = require('../Models/Video.models');
 const Credit = require('../Models/Credit.models');
 const Project = require('../Models/Project.model');
 const Template = require('../Models/Template.models');
+const Config = require('../Models/Config.models');
 const { AppError } = require('../middleware/error.middleware');
 
 const getStats = asyncHandler(async (req, res) => {
@@ -56,11 +57,11 @@ const listUsers = asyncHandler(async (req, res) => {
   const search = q.trim();
   const filter = search
     ? {
-        $or: [
-          { username: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-        ],
-      }
+      $or: [
+        { username: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ],
+    }
     : {};
 
   const skip = (Number(page) - 1) * Number(limit);
@@ -179,6 +180,76 @@ const deleteGeneration = asyncHandler(async (req, res, next) => {
   res.json({ success: true, message: 'Generation deleted' });
 });
 
+const getConfigs = asyncHandler(async (req, res) => {
+  const configs = await Config.find({}).lean();
+  res.json({ success: true, data: configs });
+});
+
+const updateConfig = asyncHandler(async (req, res, next) => {
+  const { key, value } = req.body;
+  if (!key) return next(new AppError('Config key is required', 400));
+
+  let config = await Config.findOne({ key });
+  if (config) {
+    config.value = value;
+    config.updatedBy = req.user._id;
+    await config.save();
+  } else {
+    config = await Config.create({
+      key,
+      value,
+      category: req.body.category || 'platform',
+      description: req.body.description || '',
+      updatedBy: req.user._id,
+    });
+  }
+
+  res.json({ success: true, message: 'Configuration updated', data: config });
+});
+
+const getModerationQueue = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [items, total] = await Promise.all([
+    Generation.find({ moderationStatus: 'flagged' })
+      .populate('user', 'username email')
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
+    Generation.countDocuments({ moderationStatus: 'flagged' }),
+  ]);
+
+  res.json({
+    success: true,
+    data: items,
+    pagination: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+});
+
+const moderateGeneration = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { status } = req.body; // approved, rejected, none
+
+  if (!['approved', 'rejected', 'none'].includes(status)) {
+    return next(new AppError('Invalid moderation status', 400));
+  }
+
+  const generation = await Generation.findById(id);
+  if (!generation) return next(new AppError('Generation not found', 404));
+
+  generation.moderationStatus = status;
+  await generation.save();
+
+  res.json({ success: true, message: `Generation ${status}`, data: generation });
+});
+
 module.exports = {
   getStats,
   listUsers,
@@ -187,4 +258,8 @@ module.exports = {
   unbanUser,
   deleteUser,
   deleteGeneration,
+  getConfigs,
+  updateConfig,
+  getModerationQueue,
+  moderateGeneration,
 };

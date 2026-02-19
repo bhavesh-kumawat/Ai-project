@@ -6,7 +6,7 @@ const creditSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, 
+      unique: true,
       index: true,
     },
 
@@ -18,7 +18,7 @@ const creditSchema = new mongoose.Schema(
 
     plan: {
       type: String,
-      enum: ["free", "daily", "monthly"],
+      enum: ["free", "daily", "monthly", "starter", "pro", "ultra"],
       default: "free",
     },
 
@@ -61,33 +61,33 @@ const creditSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-     subscriptionStatus: {
+    subscriptionStatus: {
       type: String,
       enum: ["active", "expired", "canceled", "trialing"],
       default: null,
     },
-     stripeSubscriptionId: {
-      type: String,
-      default: null,
-      sparse: true, 
-    },
-
-     stripeCustomerId: {
+    stripeSubscriptionId: {
       type: String,
       default: null,
       sparse: true,
     },
-     totalCreditsUsed: {
+
+    stripeCustomerId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
+    totalCreditsUsed: {
       type: Number,
       default: 0,
       min: 0,
     },
-     totalGenerations: {
+    totalGenerations: {
       type: Number,
       default: 0,
       min: 0,
     },
-      bonusCredits: {
+    bonusCredits: {
       type: Number,
       default: 0,
       min: 0,

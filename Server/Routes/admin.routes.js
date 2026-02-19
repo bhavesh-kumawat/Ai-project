@@ -14,4 +14,9 @@ router.patch('/users/:id/unban', adminController.unbanUser);
 router.delete('/users/:id', adminController.deleteUser);
 router.delete('/generations/:id', adminController.deleteGeneration);
 
+router.get('/configs', adminController.getConfigs);
+router.post('/configs', adminController.updateConfig);
+router.get('/moderation', adminController.getModerationQueue);
+router.patch('/generations/:id/moderate', adminController.moderateGeneration);
+
 module.exports = router;

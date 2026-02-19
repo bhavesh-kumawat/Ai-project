@@ -1,4 +1,23 @@
 const { getClientCredit, deductUserCredit, addUserCredits, updateUserPlan, cancelUserSubscription, getUserStatistics } = require("../services/credit.service.js");
+const Transaction = require("../Models/Transaction.models.js");
+
+exports.getTransactions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 }).limit(50);
+
+    res.status(200).json({
+      success: true,
+      data: transactions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching transaction history",
+      error: error.message,
+    });
+  }
+};
 
 exports.getUserCredit = async (req, res) => {
   try {

@@ -34,3 +34,23 @@ export const deleteAdminGeneration = async (id) => {
   const response = await api.delete(`/admin/generations/${id}`);
   return response.data;
 };
+
+export const getAdminConfigs = async () => {
+  const response = await api.get("/admin/configs");
+  return response.data;
+};
+
+export const updateAdminConfig = async (data) => {
+  const response = await api.post("/admin/configs", data);
+  return response.data;
+};
+
+export const getAdminModeration = async (params = {}) => {
+  const response = await api.get("/admin/moderation", { params });
+  return response.data;
+};
+
+export const moderateAdminGeneration = async (id, status) => {
+  const response = await api.patch(`/admin/generations/${id}/moderate`, { status });
+  return response.data;
+};

@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import Home from "./Pages/Home.page";
 import Login from "./Pages/Login.page";
 import Register from "./Pages/Register.page";
@@ -10,6 +11,17 @@ import ProtectedRoute from "./Pages/ProtectedRoute.comonent";
 const App = () => {
   return (
     <div className="bg-black min-h-screen">
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "#1e293b",
+            color: "#fff",
+            border: "1px solid rgba(255,255,255,0.1)",
+            backdropFilter: "blur(10px)",
+          },
+        }}
+      />
       <Router>
         <Routes>
           <Route path="/" element={<Home />} />

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-const BackButton = () => {
+const BackButton = ({ style = {} }) => {
     const navigate = useNavigate();
 
     return (
@@ -30,6 +30,7 @@ const BackButton = () => {
                 fontSize: '14px',
                 fontWeight: 600,
                 transition: 'background 0.2s',
+                ...style
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}

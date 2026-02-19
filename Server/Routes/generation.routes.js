@@ -2,6 +2,7 @@ const express = require('express');
 const validate = require('../middleware/validation.middleware');
 const { authenticate } = require('../middleware/auth.middleware');
 const generationController = require('../Controllers/Generation.Controller');
+const { upload } = require('../middleware/multer.middleware');
 const {
   createGenerationSchema,
   listGenerationsSchema,
@@ -11,6 +12,7 @@ const {
 const router = express.Router();
 
 router.post('/', authenticate, validate(createGenerationSchema), generationController.createGeneration);
+router.post('/upload', authenticate, upload.single('file'), generationController.uploadImage);
 router.get('/', authenticate, validate(listGenerationsSchema), generationController.listGenerations);
 router.get('/:id', authenticate, validate(generationIdSchema), generationController.getGenerationById);
 router.post('/:id/cancel', authenticate, validate(generationIdSchema), generationController.cancelGeneration);
