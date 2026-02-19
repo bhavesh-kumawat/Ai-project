@@ -6,6 +6,8 @@ const User = require("../Models/User.models");
 const verifyAdmin = require("../middleware/verifyAdmin");
 const { refreshAccessToken, logoutAll, authenticate } = require("../middleware/auth.middleware");
 const authController = require("../Controllers/auth.Controller");
+const passport = require("passport");
+const { generateToken } = require("../config/auth.config");
 
 const router = express.Router();
 
@@ -78,5 +80,19 @@ router.post("/refresh", refreshAccessToken);
 router.get("/me", authenticate, authController.getMe);
 router.patch("/me", authenticate, authController.updateMe);
 router.post("/logout-all", authenticate, logoutAll);
+
+// Google OAuth
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));
+
+router.get("/google/callback", passport.authenticate("google", { failureRedirect: "/login", session: false }), (req, res) => {
+  const { accessToken, refreshToken } = generateToken(req.user);
+
+  // Set tokens in cookies or redirect with tokens in URL (cookies are safer)
+  res.cookie("accessToken", accessToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+  res.cookie("refreshToken", refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+
+  // Redirect to frontend dashboard
+  res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/dashboard`);
+});
 
 module.exports = router;

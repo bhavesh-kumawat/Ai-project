@@ -21,6 +21,7 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [pwStrength, setPwStrength] = useState(0);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const isAdmin = isAdminRoute && secretUnlocked;
 
@@ -74,6 +75,8 @@ function Register() {
 
     if (!form.password) next.password = "Password is required.";
     else if (form.password.length < 4) next.password = "Minimum 4 characters (schema rule).";
+
+    if (!isAdmin && !acceptedTerms) next.terms = "You must agree to the policies.";
 
     return next;
   };
@@ -131,6 +134,8 @@ function Register() {
         secretError={secretError}
         verifySecret={verifySecret}
         isAdmin={isAdmin}
+        acceptedTerms={acceptedTerms}
+        setAcceptedTerms={setAcceptedTerms}
         handleSubmit={handleSubmit}
       />
     </>

@@ -5,6 +5,8 @@ import Login from "./Pages/Login.page";
 import Register from "./Pages/Register.page";
 import Dashboard from "./Pages/UserDashboard.page";
 import AdminDashboard from "./Pages/AdminDashboard.page";
+import PrivacyPolicy from "./Pages/PrivacyPolicy.page";
+import CookiePolicy from "./Pages/CookiePolicy.page";
 import RequireAuth from "./utils/RequireAuth";
 import ProtectedRoute from "./Pages/ProtectedRoute.comonent";
 
@@ -25,6 +27,8 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
 
           <Route
             path="/login"

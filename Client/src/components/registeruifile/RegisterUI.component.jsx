@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import SpaceCanvas from "./SpaceCanvas.component";
 import Blobs from "./Blobs.component";
 import InputField from "./InputField.component";
-import SocialBtn from "./SocialBtn.component";
+import SocialBtn from "../SocialBtn.component";
 const _MOTION = motion;
 
 function RegisterUI({
@@ -21,6 +21,8 @@ function RegisterUI({
   secretError,
   verifySecret,
   isAdmin,
+  acceptedTerms,
+  setAcceptedTerms,
   handleSubmit,
 }) {
   const [showSecret, setShowSecret] = useState(false);
@@ -150,7 +152,7 @@ function RegisterUI({
                     <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", fontFamily: "'Syne',sans-serif" }}>
                       {isAdmin ? "Admin Registration" : "Create account"}
                     </p>
-                    <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "0.18em", fontFamily: "'Syne',sans-serif" }}>NEXUS</p>
+                    <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "0.18em", fontFamily: "'Syne',sans-serif" }}>Skull Bot</p>
                   </div>
                   {isAdmin && (
                     <div style={{ marginLeft: "auto", padding: "4px 10px", borderRadius: 999, background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#fca5a5", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
@@ -199,6 +201,26 @@ function RegisterUI({
                     )}
                   </motion.div>
 
+                  {!isAdmin && (
+                    <motion.div initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.51 }} style={{ marginBottom: 5 }}>
+                      <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "6px 2px" }}>
+                        <input
+                          type="checkbox"
+                          checked={acceptedTerms}
+                          onChange={(e) => setAcceptedTerms(e.target.checked)}
+                          style={{ marginTop: 3, accentColor: "#7c3aed", width: 15, height: 15, cursor: "pointer" }}
+                        />
+                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, lineHeight: 1.4 }}>
+                          I agree to the{" "}
+                          <Link to="/privacy-policy" target="_blank" style={{ color: "#a78bfa", textDecoration: "none" }} onClick={e => e.stopPropagation()}>Privacy Policy</Link>
+                          {" "}and{" "}
+                          <Link to="/cookie-policy" target="_blank" style={{ color: "#a78bfa", textDecoration: "none" }} onClick={e => e.stopPropagation()}>Cookie Policy</Link>.
+                        </span>
+                      </label>
+                      {errors.terms && <p style={{ color: "rgba(248,113,113,0.9)", fontSize: 11, marginTop: 4, paddingLeft: 2 }}>⚠ {errors.terms}</p>}
+                    </motion.div>
+                  )}
+
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.54 }}>
                     <button
                       type="submit"
@@ -229,7 +251,7 @@ function RegisterUI({
 
                   <motion.div style={{ display: "flex", alignItems: "center", gap: 12 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
                     <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
-                    <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11, fontWeight: 300 }}>or sign up with</span>
+                    <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11, fontWeight: 300 }}>or continue with</span>
                     <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
                   </motion.div>
 
@@ -245,29 +267,9 @@ function RegisterUI({
                       )}
                       label="Continue with Google"
                       color="rgba(234,67,53,0.25)"
-                      onClick={() => console.log("Google OAuth")}
-                    />
-
-                    <SocialBtn
-                      icon={(
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
-                          <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.49 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-                        </svg>
-                      )}
-                      label="Continue with Facebook"
-                      color="rgba(24,119,242,0.25)"
-                      onClick={() => console.log("Facebook OAuth")}
-                    />
-
-                    <SocialBtn
-                      icon={(
-                        <svg width="17" height="17" viewBox="0 0 300 300" fill="white">
-                          <path d="M178.57 127.15L290.27 0h-26.46l-97.03 110.38L89.34 0H0l117.13 166.93L0 300.25h26.46l102.4-116.59 81.8 116.59H300L178.57 127.15zm-36.32 41.4l-11.87-16.67L36.16 19.39h40.69l76.2 106.93 11.87 16.67 99.06 138.98h-40.69l-80.04-113.42z" />
-                        </svg>
-                      )}
-                      label="Continue with X"
-                      color="rgba(255,255,255,0.12)"
-                      onClick={() => console.log("X OAuth")}
+                      onClick={() => {
+                        window.location.href = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/auth/google`;
+                      }}
                     />
                   </motion.div>
 

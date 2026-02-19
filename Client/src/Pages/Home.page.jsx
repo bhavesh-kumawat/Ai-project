@@ -98,8 +98,8 @@ function Home() {
     <FadeUp delay={delay}>
       <motion.div
         className={`relative rounded-2xl p-8 border h-full flex flex-col ${popular
-            ? "border-violet-500/60 bg-gradient-to-b from-violet-950/60 to-black/60"
-            : "border-white/10 bg-white/5"
+          ? "border-violet-500/60 bg-gradient-to-b from-violet-950/60 to-black/60"
+          : "border-white/10 bg-white/5"
           } backdrop-blur-sm`}
         whileHover={{ y: -6 }}
         transition={{ duration: 0.3 }}
@@ -123,8 +123,8 @@ function Home() {
         </div>
         <motion.button
           className={`w-full py-3 rounded-xl font-bold text-sm mb-6 transition-all ${popular
-              ? "bg-violet-600 hover:bg-violet-500 text-white"
-              : "border border-white/20 text-white hover:border-white/40 hover:bg-white/5"
+            ? "bg-violet-600 hover:bg-violet-500 text-white"
+            : "border border-white/20 text-white hover:border-white/40 hover:bg-white/5"
             }`}
           whileTap={{ scale: 0.97 }}
         >
@@ -297,8 +297,8 @@ function Home() {
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
       <motion.nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
-            ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
-            : "bg-transparent"
+          ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
+          : "bg-transparent"
           }`}
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -309,7 +309,7 @@ function Home() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-sm font-black">
               ✦
             </div>
-            <span className="font-black text-lg tracking-tight">AnimateX</span>
+            <span className="font-black text-lg tracking-tight">Skull Bot</span>
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-sm text-white/60">
@@ -634,8 +634,8 @@ function Home() {
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`flex-1 py-4 text-sm font-semibold capitalize transition-all relative ${activeTab === tab
-                        ? "text-white"
-                        : "text-white/30 hover:text-white/60"
+                      ? "text-white"
+                      : "text-white/30 hover:text-white/60"
                       }`}
                   >
                     {tab === "video" && "🎬 "}

@@ -28,18 +28,18 @@ const SEED_CONFIGS = [
     { key: "stripe_mode", value: "test", category: "billing", description: "Live or test mode for Stripe payments" },
 
     // Email
-    { key: "support_email", value: "support@nexusai.com", category: "email", description: "Support contact email" },
-    { key: "smtp_server", value: "smtp.nexusai.com", category: "email", description: "SMTP host address" },
-    { key: "email_footer_text", value: "© 2026 Nexus AI Corp", category: "email", description: "Footer text for automated emails" },
+    { key: "support_email", value: "support@skullbot.ai", category: "email", description: "Support contact email" },
+    { key: "smtp_server", value: "smtp.skullbot.ai", category: "email", description: "SMTP host address" },
+    { key: "email_footer_text", value: "© 2026 Skull Bot", category: "email", description: "Footer text for automated emails" },
     { key: "newsletter_enabled", value: true, category: "email", description: "Toggle for automatic weekly digests" },
 
     // Platform
-    { key: "site_name", value: "Nexus AI", category: "platform", description: "Public platform name" },
+    { key: "site_name", value: "Skull Bot", category: "platform", description: "Public platform name" },
     { key: "maintenance_mode", value: false, category: "platform", description: "Global maintenance toggle" },
     { key: "api_version", value: "v2.1.0", category: "platform", description: "Current API version string" },
     { key: "primary_theme_color", value: "#dc2626", category: "platform", description: "Main brand accent color" },
     { key: "footer_copyright", value: "All Rights Reserved", category: "platform", description: "Global footer copyright notice" },
-    { key: "social_links", value: { twitter: "https://x.com/nexusai", discord: "https://discord.gg/nexus" }, category: "platform", description: "Official social media links" },
+    { key: "social_links", value: { twitter: "https://x.com/skullbot", discord: "https://discord.gg/skullbot" }, category: "platform", description: "Official social media links" },
 ];
 
 async function seed() {

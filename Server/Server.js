@@ -12,6 +12,7 @@ const projectRoutes = require('./Routes/project.routes.js');
 const adminRoutes = require('./Routes/admin.routes.js');
 const stripeRoutes = require('./Routes/stripe.routes.js');
 const stripeController = require('./Controllers/stripe.Controller.js');
+const passport = require('./config/passport.config');
 
 const databaseService = require('./services/database.service.js');
 const scheduler = require('./jobs/scheduler.js');
@@ -27,6 +28,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), strip
 
 // 2. Configure App (Apply all other middleware)
 configureApp(app);
+app.use(passport.initialize());
 
 // Setup Routes (after middleware, before server start)
 app.use("/api", FrontendRoutes);

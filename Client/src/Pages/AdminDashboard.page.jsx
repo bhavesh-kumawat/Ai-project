@@ -81,7 +81,7 @@ const WEEK = [
 ];
 
 const DEFAULT_CONFIGS = [
-  { key: "site_name", value: "Nexus AI", category: "platform" },
+  { key: "site_name", value: "Skull Bot", category: "platform" },
   { key: "maintenance_mode", value: false, category: "platform" },
   { key: "api_version", value: "v2.1.0", category: "platform" },
   { key: "primary_theme_color", value: "#dc2626", category: "platform" },
@@ -96,7 +96,7 @@ const DEFAULT_CONFIGS = [
   { key: "admin_2fa_enabled", value: false, category: "security" },
   { key: "session_expiry_hours", value: 24, category: "security" },
   { key: "max_login_retries", value: 5, category: "security" },
-  { key: "support_email", value: "support@nexusai.com", category: "email" },
+  { key: "support_email", value: "support@skullbot.ai", category: "email" },
   { key: "smtp_server", value: "smtp.nexusai.com", category: "email" },
   { key: "newsletter_enabled", value: true, category: "email" },
 ];
@@ -164,7 +164,7 @@ function Navbar({ user, activeTab, setActiveTab, onLogout, live }) {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#dc2626,#ea580c)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎬</div>
-            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: "#fff", letterSpacing: "0.06em" }}>Nexus</span>
+            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: "#fff", letterSpacing: "0.06em" }}>Skull Bot</span>
             <span style={{ color: "rgba(239,68,68,0.7)", fontSize: 9, fontWeight: 700, letterSpacing: "0.2em" }}>AI</span>
           </div>
           <div style={{ padding: "2px 10px", borderRadius: 999, background: "rgba(220,38,38,0.18)", border: "1px solid rgba(220,38,38,0.35)", color: "#fca5a5", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em" }}>🛡 ADMIN</div>
