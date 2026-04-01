@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: bhaveshdocker74807/ai-project-backend-beta:v2.1
+          image: bhaveshdocker74807/ai-backend-app:latest
           ports:
             - containerPort: 8080
 ---

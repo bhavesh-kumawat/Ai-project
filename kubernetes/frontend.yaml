@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: bhaveshdocker74807/ai-project-frontend-beta:v2.2
+          image: bhaveshdocker74807/ai-frontend-app:latest
           ports:
             - containerPort: 5173
 ---
